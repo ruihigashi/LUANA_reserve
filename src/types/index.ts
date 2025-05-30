@@ -1,10 +1,10 @@
 export interface Service {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  duration: number;
-  image_url?: string;
+  id: number
+  name: string
+  description: string
+  duration: number
+  price: number
+  category: string
 }
 
 export interface TimeSlot {
