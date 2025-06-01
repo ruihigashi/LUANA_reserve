@@ -4,18 +4,19 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Service } from '../../types';
 import { supabase } from '../../lib/supabase';
 import Button from '../ui/Button';
+import { useReservation } from '../../context/ReservationContext';
 
 const ServiceAccordion: React.FC = () => {
   const [services, setServices] = useState<Service[]>([]);
   const [grouped, setGrouped] = useState<Record<string, Service[]>>({});
   const [openCats, setOpenCats] = useState<Record<string, boolean>>({});
-  // ローカルで複数選択を保持
-  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
+  const [localSelected, setLocalSelected] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { setSelectedServices } = useReservation();
   const navigate = useNavigate();
 
-  // サービス一覧を取得
   useEffect(() => {
     (async () => {
       try {
@@ -34,7 +35,6 @@ const ServiceAccordion: React.FC = () => {
     })();
   }, []);
 
-  // カテゴリでグルーピング
   useEffect(() => {
     const map: Record<string, Service[]> = {};
     services.forEach(s => {
@@ -44,24 +44,22 @@ const ServiceAccordion: React.FC = () => {
     setGrouped(map);
   }, [services]);
 
-  // アコーディオン開閉
   const toggleCategory = (cat: string) => {
     setOpenCats(prev => ({ ...prev, [cat]: !prev[cat] }));
   };
 
-  // メニュー選択／解除
   const toggleSelect = (svc: Service) => {
-    setSelectedServices(prev =>
+    setLocalSelected(prev =>
       prev.some(s => s.id === svc.id)
         ? prev.filter(s => s.id !== svc.id)
         : [...prev, svc]
     );
   };
 
-  // 次へ (選択済みを state で渡す)
   const handleContinue = () => {
-    if (selectedServices.length > 0) {
-      navigate('/reservation/datetime', { state: { selectedServices } });
+    if (localSelected.length > 0) {
+      setSelectedServices(localSelected);
+      navigate('/reservation/datetime');
     }
   };
 
@@ -70,9 +68,7 @@ const ServiceAccordion: React.FC = () => {
 
   return (
     <div className="w-full py-8 bg-white">
-      <h2 className="text-2xl font-bold text-center mb-6">
-        メニューを選択してください
-      </h2>
+      <h2 className="text-2xl font-bold text-center mb-6">メニューを選択してください</h2>
 
       {Object.entries(grouped).map(([cat, items]) => (
         <div key={cat} className="mb-4 border rounded-lg overflow-hidden">
@@ -95,9 +91,7 @@ const ServiceAccordion: React.FC = () => {
                   key={s.id}
                   onClick={() => toggleSelect(s)}
                   className={`px-6 py-4 border-t cursor-pointer flex justify-between items-center ${
-                    selectedServices.some(sel => sel.id === s.id)
-                      ? 'bg-purple-50'
-                      : ''
+                    localSelected.some(sel => sel.id === s.id) ? 'bg-purple-50' : ''
                   }`}
                 >
                   <div>
@@ -107,7 +101,7 @@ const ServiceAccordion: React.FC = () => {
                     )}
                     <p className="text-sm text-gray-600">{s.description}</p>
                   </div>
-                  {selectedServices.some(sel => sel.id === s.id) && (
+                  {localSelected.some(sel => sel.id === s.id) && (
                     <span className="text-sm text-green-600 font-semibold">選択中</span>
                   )}
                 </div>
@@ -117,10 +111,10 @@ const ServiceAccordion: React.FC = () => {
         </div>
       ))}
 
-      {selectedServices.length > 0 && (
+      {localSelected.length > 0 && (
         <div className="fixed bottom-0 left-0 w-full bg-white border-t p-4">
           <div className="mb-2 overflow-x-auto whitespace-nowrap">
-            {selectedServices.map(s => (
+            {localSelected.map(s => (
               <span
                 key={s.id}
                 className="inline-block bg-green-100 text-green-800 px-3 py-1 mr-2 rounded-full text-sm"
@@ -130,7 +124,7 @@ const ServiceAccordion: React.FC = () => {
             ))}
           </div>
           <Button onClick={handleContinue} className="w-full">
-            日時を選択 ({selectedServices.length})
+            日時を選択 ({localSelected.length})
           </Button>
         </div>
       )}

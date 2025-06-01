@@ -40,8 +40,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ currentStep, totalSteps }) =>
             >
               {index === 0 && 'メニュー選択'}
               {index === 1 && '日時選択'}
-              {index === 2 && 'お客様情報入力'}
-              {index === 3 && 'お客様情報確認'}
+              {index === 2 && '予約内容確認'}
+              {index === 3 && '予約完了'}
             </span>
           </div>
         ))}

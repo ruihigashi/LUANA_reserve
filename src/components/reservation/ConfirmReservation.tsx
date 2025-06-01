@@ -1,186 +1,157 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { Calendar, Clock, User, Mail, Phone, CheckCircle, AlertCircle } from 'lucide-react';
-import { useReservation } from '../../context/ReservationContext';
-import { supabase } from '../../lib/supabase';
+// src/components/reservation/ConfirmReservation.tsx
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { CheckCircle, Calendar, Home, Tag, Clock, Hash } from 'lucide-react';
 import Button from '../ui/Button';
-import Card from '../ui/Card';
+import { supabase } from '../../lib/supabase';
+
+interface LocationState {
+  reservationId?: number;
+}
+
+interface ReservationDetail {
+  id: number;
+  service_name: string;
+  date: string;
+  start_time: string;
+}
 
 const ConfirmReservation: React.FC = () => {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const {
-    selectedService,
-    selectedDate,
-    selectedTimeSlot,
-    customerName,
-    customerEmail,
-    customerPhone,
-    notes,
-    resetReservation
-  } = useReservation();
-
+  const [reservation, setReservation] = useState<ReservationDetail | null>(null);
+  const location = useLocation();
   const navigate = useNavigate();
+  const state = location.state as LocationState;
 
-  const handleBack = () => {
-    navigate('/reservation/details');
-  };
-
-  const handleConfirm = async () => {
-    if (!selectedService || !selectedDate || !selectedTimeSlot) {
-      setError('予約情報が不足しています。もう一度お試しください。');
+  useEffect(() => {
+    // 確認画面としてではなく、完了画面を担うので reservationId がなければ戻す
+    if (!state?.reservationId) {
+      navigate('/reservation');
       return;
     }
 
-    setIsSubmitting(true);
-    setError(null);
+    const fetchReservationDetails = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('reservations')
+          .select(`
+            id,
+            date,
+            services(name),
+            time_slots(start_time)
+          `)
+          .eq('id', state.reservationId)
+          .single();
 
+        if (error) throw error;
+
+        if (data) {
+          setReservation({
+            id: data.id,
+            service_name: data.services[0]?.name,
+            date: data.date,
+            start_time: data.time_slots[0]?.start_time,
+          });
+        }
+      } catch (err) {
+        console.error('予約情報の取得エラー:', err);
+      }
+    };
+
+    fetchReservationDetails();
+  }, [state, navigate]);
+
+  const formatDate = (dateStr: string) => {
     try {
-      const formattedDate = format(selectedDate, 'yyyy-MM-dd');
-
-      const { data, error } = await supabase
-        .from('reservations')
-        .insert([
-          {
-            service_id: selectedService.id,
-            customer_name: customerName,
-            customer_email: customerEmail,
-            customer_phone: customerPhone,
-            date: formattedDate,
-            time_slot_id: selectedTimeSlot.id,
-            notes: notes || null,
-          }
-        ])
-        .select();
-
-      if (error) throw error;
-
-      navigate('/reservation/success', {
-        state: { reservationId: data?.[0]?.id }
-      });
-
-      resetReservation();
-    } catch (err) {
-      console.error('予約作成エラー:', err);
-      setError('予約の作成に失敗しました。もう一度お試しください。');
-    } finally {
-      setIsSubmitting(false);
+      const date = new Date(dateStr);
+      return new Intl.DateTimeFormat('ja-JP', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long',
+      }).format(date);
+    } catch {
+      return dateStr;
     }
   };
 
-  if (!selectedService || !selectedDate || !selectedTimeSlot) {
-    navigate('/reservation/services');
-    return null;
-  }
-
-  const formatTime = (timeString: string) => {
+  const formatTime = (timeStr: string) => {
     try {
-      const date = new Date(`2000-01-01T${timeString}`);
+      const date = new Date(`2000-01-01T${timeStr}`);
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch (error) {
-      return timeString;
+    } catch {
+      return timeStr;
     }
   };
 
   return (
-    <div className="py-8 animate-fadeIn">
-      <h2 className="text-2xl font-serif font-bold text-purple-900 mb-6 text-center">
-        ご予約内容の確認
-      </h2>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 animate-fadeIn">
+      <div className="max-w-md w-full space-y-8">
+        {/* Success Icon */}
+        <div className="flex justify-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center shadow-lg">
+            <CheckCircle className="w-12 h-12 text-green-600 animate-bounce" />
+          </div>
+        </div>
 
-      <Card className="max-w-2xl mx-auto p-6 mb-8">
-        <h3 className="font-serif text-xl font-bold text-purple-800 mb-6 pb-3 border-b border-pink-200">
-          予約サマリー
-        </h3>
+        {/* Heading */}
+        <div className="text-center">
+          <h2 className="mt-2 text-3xl leading-9 font-extrabold text-purple-900">
+            ご予約が完了しました！
+          </h2>
+          <p className="mt-4 text-lg text-gray-600">
+            ご予約ありがとうございます。以下の内容で承りました。
+          </p>
+        </div>
 
+        {/* Reservation Details Card */}
+        {reservation && (
+          <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div className="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-4 flex items-center">
+              <Clock className="w-5 h-5 text-white mr-2" />
+              <h3 className="text-white text-lg font-semibold">
+                予約内容のご確認
+              </h3>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div className="flex items-center">
+                <Tag className="w-5 h-5 text-purple-600 mr-2" />
+                <span className="text-gray-700 font-medium w-20">サービス</span>
+                <span className="text-gray-900">{reservation.service_name}</span>
+              </div>
+              <div className="flex items-center">
+                <Calendar className="w-5 h-5 text-purple-600 mr-2" />
+                <span className="text-gray-700 font-medium w-20">日付</span>
+                <span className="text-gray-900">{formatDate(reservation.date)}</span>
+              </div>
+              <div className="flex items-center">
+                <Clock className="w-5 h-5 text-purple-600 mr-2" />
+                <span className="text-gray-700 font-medium w-20">時間</span>
+                <span className="text-gray-900">{formatTime(reservation.start_time)}</span>
+              </div>
+              <div className="flex items-center">
+                <Hash className="w-5 h-5 text-purple-600 mr-2" />
+                <span className="text-gray-700 font-medium w-20">予約番号</span>
+                <span className="text-gray-900">#{reservation.id}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Action Buttons */}
         <div className="space-y-4">
-          <div className="flex justify-between items-start">
-            <span className="font-medium text-gray-700">サービス:</span>
-            <div className="text-right">
-              <div className="font-bold text-purple-900">{selectedService.name}</div>
-              <div className="text-sm text-gray-600">
-                {selectedService.duration} 分 - ¥{selectedService.price.toLocaleString()}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="flex items-center font-medium text-gray-700">
-              <Calendar className="w-4 h-4 mr-2" />
-              日付:
-            </span>
-            <span className="font-bold text-purple-900">
-              {format(selectedDate, 'yyyy年M月d日 (EEE)', { locale: undefined })}
-            </span>
-          </div>
-
-          <div className="flex justify-between items-center">
-            <span className="flex items-center font-medium text-gray-700">
-              <Clock className="w-4 h-4 mr-2" />
-              時間:
-            </span>
-            <span className="font-bold text-purple-900">
-              {formatTime(selectedTimeSlot.start_time)}
-            </span>
-          </div>
-
-          <div className="pt-4 border-t border-pink-100">
-            <h4 className="font-medium text-purple-800 mb-3">お客様情報</h4>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <User className="w-4 h-4 mr-2 text-gray-500" />
-                <span>{customerName}</span>
-              </div>
-              <div className="flex items-center">
-                <Mail className="w-4 h-4 mr-2 text-gray-500" />
-                <span>{customerEmail}</span>
-              </div>
-              <div className="flex items-center">
-                <Phone className="w-4 h-4 mr-2 text-gray-500" />
-                <span>{customerPhone}</span>
-              </div>
-            </div>
-          </div>
-
-          {notes && (
-            <div className="pt-4 border-t border-pink-100">
-              <h4 className="font-medium text-purple-800 mb-2">ご要望・メモ</h4>
-              <p className="text-gray-700">{notes}</p>
-            </div>
-          )}
+          <Link to="/reservation">
+            <Button className="w-full flex items-center justify-center bg-green-600 hover:bg-green-700 text-white">
+              <Calendar className="w-5 h-5 mr-2" />
+              別の予約をする
+            </Button>
+          </Link>
+          <Link to="/">
+            <Button variant="outline" className="w-full flex items-center justify-center border-purple-600 text-purple-600 hover:bg-purple-50">
+              <Home className="w-5 h-5 mr-2" />
+              ホームに戻る
+            </Button>
+          </Link>
         </div>
-      </Card>
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md flex items-center text-red-700">
-          <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div className="flex flex-col sm:flex-row justify-between gap-4 max-w-2xl mx-auto">
-        <Button type="button" variant="outline" onClick={handleBack} disabled={isSubmitting}>
-          戻る
-        </Button>
-        <Button
-          onClick={handleConfirm}
-          disabled={isSubmitting}
-          className="flex items-center justify-center"
-        >
-          {isSubmitting ? (
-            <>
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-              登録中...
-            </>
-          ) : (
-            <>
-              <CheckCircle className="w-5 h-5 mr-2" />
-              予約を確定する
-            </>
-          )}
-        </Button>
       </div>
     </div>
   );
