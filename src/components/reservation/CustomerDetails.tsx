@@ -1,18 +1,18 @@
 // src/components/reservation/CustomerDetails.tsx
-import React, { useState } from 'react';
+
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import {
-  Calendar,
-  Clock,
-  Tag,
-  MessageSquare,
-} from 'lucide-react';
+import { Calendar, Clock, Tag } from 'lucide-react';
 import { useReservation } from '../../context/ReservationContext';
 import Button from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 
 const CustomerDetails: React.FC = () => {
+  // ─────────────────────────────────────────────────
+  // useReservation から取ってくる状態
+  // （selectedServices, selectedDate, selectedTimeSlot, notes, setNotes）
+  // ─────────────────────────────────────────────────
   const {
     selectedServices,
     selectedDate,
@@ -22,29 +22,24 @@ const CustomerDetails: React.FC = () => {
   } = useReservation();
   const navigate = useNavigate();
 
-  // 「姓」「名」「セイ」「メイ」「電話番号」のローカルステート
+  // 「姓」「名」「セイ」「メイ」「電話番号」
   const [lastName, setLastName] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastNameKana, setLastNameKana] = useState<string>('');
   const [firstNameKana, setFirstNameKana] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
 
-  // フィールドが空かどうかの判定
+  // バリデーション
   const isNameValid =
     lastName.trim() !== '' &&
     firstName.trim() !== '' &&
     lastNameKana.trim() !== '' &&
     firstNameKana.trim() !== '';
   const isPhoneValid = phone.trim() !== '';
-
-  // バリデーションOKなら「予約する」ボタンを有効化
   const isFormValid =
-    isNameValid &&
-    isPhoneValid &&
-    !!selectedDate &&
-    !!selectedTimeSlot;
+    isNameValid && isPhoneValid && !!selectedDate && !!selectedTimeSlot;
 
-  // 「サービスまたは日時が未選択」時はサービス選択に戻す
+  // 「サービスまたは日時が未選択」ならサービス選択に戻すガード
   if (
     !selectedServices ||
     selectedServices.length === 0 ||
@@ -55,61 +50,99 @@ const CustomerDetails: React.FC = () => {
     return null;
   }
 
-  // フォーマット済みの日時表示（例：2025年06月08日 (日) 10:00～）
-  const formattedDateTime = React.useMemo(() => {
+  // フォーマット済みの日時表示
+  const formattedDateTime = useMemo(() => {
     const datePart = format(selectedDate, 'yyyy年MM月dd日 (E)');
     const timePart = format(
-      new Date(
-        `${format(selectedDate, 'yyyy-MM-dd')}T${selectedTimeSlot.start_time}`
-      ),
+      new Date(`${format(selectedDate, 'yyyy-MM-dd')}T${selectedTimeSlot.start_time}`),
       'H:mm'
     );
     return `${datePart}  ${timePart}～`;
   }, [selectedDate, selectedTimeSlot]);
 
-  // サービス名リストを「A、B、C…」の形で結合
-  const serviceNames = React.useMemo(() => {
+  // 選択サービスの「日本語名」をカンマ区切りで結合
+  const serviceNames = useMemo(() => {
     return selectedServices.map((svc) => svc.name).join('、');
   }, [selectedServices]);
 
-  // 合計金額を計算（INSERT には使うが、フロントでは表示しない）
-  const totalPrice = React.useMemo(() => {
+  // 合計金額（フロントでは表示しないが DB 挿入用に計算）
+  const totalPrice = useMemo(() => {
     return selectedServices.reduce((sum, svc) => sum + svc.price, 0);
   }, [selectedServices]);
 
-  // 「前に戻る」 → 日時選択へ
+  // 合計所要時間（分）を計算
+  const totalRequiredMinutes = useMemo(() => {
+    return selectedServices.reduce((sum, svc) => sum + svc.duration, 0);
+  }, [selectedServices]);
+
+  // 「HH:mm:ss の文字列」に minutes を足して戻すユーティリティ
+  function incrementTimeByMinutes(baseTime: string, addMin: number): string {
+    const [h, m, s] = baseTime.split(':').map(Number);
+    const dateObj = new Date(0, 0, 0, h, m, s);
+    dateObj.setMinutes(dateObj.getMinutes() + addMin);
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(
+      dateObj.getSeconds()
+    )}`;
+  }
+
+  // 「戻る」 ボタン → 日時選択へ
   const handleBack = () => {
     navigate('/reservation/datetime');
   };
 
-  // フォーム送信時の処理：reservations テーブルに一括 INSERT
+  // ‒‒‒‒‒‒‒‒‒‒‒‒‒
+  // フォーム送信（顧客テーブルに INSERT → 予約テーブルに INSERT → time_slots 更新）
+  // ‒‒‒‒‒‒‒‒‒‒‒‒‒
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!isFormValid) {
       alert('お名前（漢字・カナ）と電話番号は必須です。');
       return;
     }
 
-    // Supabase に渡す日付文字列
+    // selectedDate は Date 型なので、SQL 用には YYYY-MM-DD にする
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    // 予約終了時刻 = 開始時刻 + totalRequiredMinutes
+    const endTimeString = incrementTimeByMinutes(
+      selectedTimeSlot.start_time,
+      totalRequiredMinutes
+    ); // "HH:mm:ss" 形式
 
     try {
-      // 1) reservations テーブルに一括 INSERT
-      //    ※SQL で作成したカラムをすべてここにマッピングする
+      // 1) customers テーブルに INSERT
+      const { data: customerData, error: customerError } = await supabase
+        .from('customers')
+        .insert({
+          last_name: lastName.trim(),
+          first_name: firstName.trim(),
+          last_name_kana: lastNameKana.trim(),
+          first_name_kana: firstNameKana.trim(),
+          phone: phone.trim(),
+        })
+        .select('id')
+        .single();
+
+      if (customerError) {
+        throw customerError;
+      }
+      const newCustomerId = customerData?.id;
+      if (!newCustomerId) {
+        throw new Error('顧客IDが取得できませんでした');
+      }
+
+      // 2) reservations テーブルに INSERT
       const { data: reservationData, error: reservationError } =
         await supabase
           .from('reservations')
           .insert({
-            customer_last_name: lastName,
-            customer_first_name: firstName,
-            customer_last_name_kana: lastNameKana,
-            customer_first_name_kana: firstNameKana,
-            customer_phone: phone,
+            customer_id: newCustomerId,
             date: dateStr,
-            time_slot_id: selectedTimeSlot.id,
+            start_time: selectedTimeSlot.start_time,
+            end_time: endTimeString,
+            status: 'pending',
             service_names: serviceNames,
-            total_price: totalPrice,   // フロントには表示しないが、DBには保存
+            total_price: totalPrice,
             notes: notes || '',
           })
           .select('id')
@@ -118,28 +151,41 @@ const CustomerDetails: React.FC = () => {
       if (reservationError) {
         throw reservationError;
       }
-
       const newReservationId = reservationData?.id;
       if (!newReservationId) {
         throw new Error('予約IDが取得できませんでした');
       }
 
-      // 2) 成功後は予約完了画面へ遷移し、reservationId を渡す
+      // ──────────────────────────────────────────────────────────
+      // 3) time_slots テーブルを一括で更新：
+      //     予約が入った日付の start_time 以上、end_time 未満のスロットを is_available = FALSE にする
+      // ──────────────────────────────────────────────────────────
+      const { error: updateSlotsError } = await supabase
+        .from('time_slots')
+        .update({ is_available: false })
+        .eq('date', dateStr)
+        .gte('start_time', selectedTimeSlot.start_time)
+        .lt('start_time', endTimeString);
+
+      if (updateSlotsError) {
+        console.error('time_slots 更新エラー:', updateSlotsError);
+        // ※ここで失敗しても「予約自体」は完了しているので、運用判断でエラー表示するかどうかを決めてください
+      }
+
+      // 4) 予約完了ページへ遷移
       navigate('/reservation/confirm', {
         state: { reservationId: newReservationId },
       });
     } catch (err: any) {
-      console.error('予約作成エラー:', err);
-      alert('予約の登録に失敗しました。再度お試しください。');
+      console.error('顧客／予約作成エラー:', err);
+      alert('登録に失敗しました。再度お試しください。');
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-8">
-        {/* ────────────────
-            ▼ ご予約内容カード
-        ──────────────── */}
+        {/** ──────────────── ご予約内容カード ──────────────── **/}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           <div className="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-4 flex items-center">
             <Calendar className="w-5 h-5 text-white mr-2" />
@@ -159,9 +205,7 @@ const CustomerDetails: React.FC = () => {
           </div>
         </div>
 
-        {/* ────────────────
-            ▼ お客様情報入力欄（紫背景カードで統一）
-        ──────────────── */}
+        {/** ──────────────── お客様情報入力欄 ──────────────── **/}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           <div className="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-4 flex items-center">
             <Tag className="w-5 h-5 text-white mr-2" />
@@ -169,7 +213,7 @@ const CustomerDetails: React.FC = () => {
           </div>
           <div className="px-6 py-5 space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* 漢字：姓・名 */}
+              {/** 漢字（姓・名） **/}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 mb-1">
@@ -180,12 +224,12 @@ const CustomerDetails: React.FC = () => {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     required
+                    placeholder="山田"
                     className={`w-full p-3 border rounded-md focus:outline-none ${
                       lastName.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
                     }`}
-                    placeholder="山田"
                   />
                 </div>
                 <div>
@@ -197,17 +241,17 @@ const CustomerDetails: React.FC = () => {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     required
+                    placeholder="太郎"
                     className={`w-full p-3 border rounded-md focus:outline-none ${
                       firstName.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
                     }`}
-                    placeholder="太郎"
                   />
                 </div>
               </div>
 
-              {/* カナ：セイ・メイ */}
+              {/** カナ（セイ・メイ） **/}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 mb-1">
@@ -218,12 +262,12 @@ const CustomerDetails: React.FC = () => {
                     value={lastNameKana}
                     onChange={(e) => setLastNameKana(e.target.value)}
                     required
+                    placeholder="ヤマダ"
                     className={`w-full p-3 border rounded-md focus:outline-none ${
                       lastNameKana.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
                     }`}
-                    placeholder="ヤマダ"
                   />
                 </div>
                 <div>
@@ -235,17 +279,17 @@ const CustomerDetails: React.FC = () => {
                     value={firstNameKana}
                     onChange={(e) => setFirstNameKana(e.target.value)}
                     required
+                    placeholder="タロウ"
                     className={`w-full p-3 border rounded-md focus:outline-none ${
                       firstNameKana.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
                     }`}
-                    placeholder="タロウ"
                   />
                 </div>
               </div>
 
-              {/* 電話番号 */}
+              {/** 電話番号 **/}
               <div>
                 <label className="block text-gray-700 mb-1">
                   電話番号 <span className="text-red-500">必須</span>
@@ -255,16 +299,16 @@ const CustomerDetails: React.FC = () => {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   required
+                  placeholder="09012345678"
                   className={`w-full p-3 border rounded-md focus:outline-none ${
                     phone.trim() === ''
                       ? 'border-red-500'
                       : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
                   }`}
-                  placeholder="09012345678"
                 />
               </div>
 
-              {/* 質問・確認事項 */}
+              {/** 質問・確認事項（任意） **/}
               <div>
                 <label className="block text-gray-700 mb-1">
                   質問・確認事項（任意）
@@ -272,12 +316,12 @@ const CustomerDetails: React.FC = () => {
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  placeholder="何かご要望があればご記入ください"
                   className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none transition-colors duration-150"
-                  placeholder="こちらに質問やご要望をご記入ください"
                 />
               </div>
 
-              {/* 予約送信ボタン */}
+              {/** 送信／戻るボタン **/}
               <div className="pt-4 flex justify-between">
                 <Button
                   type="button"
