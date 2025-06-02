@@ -302,7 +302,7 @@ const DateTimeSelection: React.FC = () => {
                 <button
                   key={format(day.date, 'yyyy-MM-dd')}
                   onClick={() => onClickMonthDay(day)}
-                  className={`relative flex flex-col items-center justify-center h-20 border rounded-md transition-colors duration-200 
+                  className={`relative flex flex-col items-center justify-center h-16 border rounded-md transition-colors duration-200 
                         ${
                           day.hasAvailable
                             ? 'cursor-pointer bg-white hover:bg-blue-100 border-blue-200'
