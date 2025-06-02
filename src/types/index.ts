@@ -13,6 +13,22 @@ export interface Service {
   category: string;
 }
 
+
+/**
+ * セットメニュー情報
+ * （Service とまったく同じ構造なので、テーブルを「set_menus」として
+ *   データベースで管理している場合はこちらを使います）
+ */
+export interface SetMenu {
+  id: number;
+  name: string;
+  description: string;
+  duration: number;
+  price: number;
+  category: string;
+}
+
+
 /**
  * 時間枠情報
  * （date フィールドを追加しています）
@@ -23,6 +39,7 @@ export interface TimeSlot {
   start_time: string;   // 例: "10:00:00"
   is_available: boolean;
 }
+
 
 /**
  * 予約情報

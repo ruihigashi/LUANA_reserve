@@ -54,7 +54,9 @@ const CustomerDetails: React.FC = () => {
   const formattedDateTime = useMemo(() => {
     const datePart = format(selectedDate, 'yyyy年MM月dd日 (E)');
     const timePart = format(
-      new Date(`${format(selectedDate, 'yyyy-MM-dd')}T${selectedTimeSlot.start_time}`),
+      new Date(
+        `${format(selectedDate, 'yyyy-MM-dd')}T${selectedTimeSlot.start_time}`
+      ),
       'H:mm'
     );
     return `${datePart}  ${timePart}～`;
@@ -65,7 +67,7 @@ const CustomerDetails: React.FC = () => {
     return selectedServices.map((svc) => svc.name).join('、');
   }, [selectedServices]);
 
-  // 合計金額（フロントでは表示しないが DB 挿入用に計算）
+  // 合計金額（DB 挿入用に計算）
   const totalPrice = useMemo(() => {
     return selectedServices.reduce((sum, svc) => sum + svc.price, 0);
   }, [selectedServices]);
@@ -81,9 +83,9 @@ const CustomerDetails: React.FC = () => {
     const dateObj = new Date(0, 0, 0, h, m, s);
     dateObj.setMinutes(dateObj.getMinutes() + addMin);
     const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${pad(dateObj.getHours())}:${pad(dateObj.getMinutes())}:${pad(
-      dateObj.getSeconds()
-    )}`;
+    return `${pad(dateObj.getHours())}:${pad(
+      dateObj.getMinutes()
+    )}:${pad(dateObj.getSeconds())}`;
   }
 
   // 「戻る」 ボタン → 日時選択へ
@@ -91,9 +93,9 @@ const CustomerDetails: React.FC = () => {
     navigate('/reservation/datetime');
   };
 
-  // ‒‒‒‒‒‒‒‒‒‒‒‒‒
+  // ──────────────────────────────────────────────────────────
   // フォーム送信（顧客テーブルに INSERT → 予約テーブルに INSERT → time_slots 更新）
-  // ‒‒‒‒‒‒‒‒‒‒‒‒‒
+  // ──────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) {
@@ -156,10 +158,8 @@ const CustomerDetails: React.FC = () => {
         throw new Error('予約IDが取得できませんでした');
       }
 
-      // ──────────────────────────────────────────────────────────
       // 3) time_slots テーブルを一括で更新：
-      //     予約が入った日付の start_time 以上、end_time 未満のスロットを is_available = FALSE にする
-      // ──────────────────────────────────────────────────────────
+      //    予約が入った日付の start_time 以上、end_time 未満のスロットを is_available = FALSE にする
       const { error: updateSlotsError } = await supabase
         .from('time_slots')
         .update({ is_available: false })
@@ -183,22 +183,22 @@ const CustomerDetails: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-blue-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-8">
         {/** ──────────────── ご予約内容カード ──────────────── **/}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-4 flex items-center">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 flex items-center">
             <Calendar className="w-5 h-5 text-white mr-2" />
             <h2 className="text-white text-lg font-semibold">ご予約内容</h2>
           </div>
           <div className="px-6 py-5 space-y-4">
             <div className="flex items-center space-x-3">
-              <Clock className="w-5 h-5 text-purple-600" />
+              <Clock className="w-5 h-5 text-blue-900" />
               <span className="text-gray-700 font-medium w-20">日時</span>
               <span className="text-gray-900">{formattedDateTime}</span>
             </div>
             <div className="flex items-center space-x-3">
-              <Tag className="w-5 h-5 text-purple-600" />
+              <Tag className="w-5 h-5 text-blue-900" />
               <span className="text-gray-700 font-medium w-20">メニュー</span>
               <span className="text-gray-900">{serviceNames}</span>
             </div>
@@ -207,7 +207,7 @@ const CustomerDetails: React.FC = () => {
 
         {/** ──────────────── お客様情報入力欄 ──────────────── **/}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
-          <div className="bg-gradient-to-r from-purple-600 to-purple-800 px-6 py-4 flex items-center">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 flex items-center">
             <Tag className="w-5 h-5 text-white mr-2" />
             <h2 className="text-white text-lg font-semibold">お客様情報</h2>
           </div>
@@ -228,7 +228,7 @@ const CustomerDetails: React.FC = () => {
                     className={`w-full p-3 border rounded-md focus:outline-none ${
                       lastName.trim() === ''
                         ? 'border-red-500'
-                        : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
+                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
                     }`}
                   />
                 </div>
@@ -245,7 +245,7 @@ const CustomerDetails: React.FC = () => {
                     className={`w-full p-3 border rounded-md focus:outline-none ${
                       firstName.trim() === ''
                         ? 'border-red-500'
-                        : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
+                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
                     }`}
                   />
                 </div>
@@ -266,7 +266,7 @@ const CustomerDetails: React.FC = () => {
                     className={`w-full p-3 border rounded-md focus:outline-none ${
                       lastNameKana.trim() === ''
                         ? 'border-red-500'
-                        : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
+                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
                     }`}
                   />
                 </div>
@@ -283,7 +283,7 @@ const CustomerDetails: React.FC = () => {
                     className={`w-full p-3 border rounded-md focus:outline-none ${
                       firstNameKana.trim() === ''
                         ? 'border-red-500'
-                        : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
+                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
                     }`}
                   />
                 </div>
@@ -303,7 +303,7 @@ const CustomerDetails: React.FC = () => {
                   className={`w-full p-3 border rounded-md focus:outline-none ${
                     phone.trim() === ''
                       ? 'border-red-500'
-                      : 'border-gray-300 focus:ring-2 focus:ring-purple-500'
+                      : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
                   }`}
                 />
               </div>
@@ -316,8 +316,8 @@ const CustomerDetails: React.FC = () => {
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="何かご要望があればご記入ください"
-                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none transition-colors duration-150"
+                  placeholder="何かご要望があればご記入ください（例：10時前の予約希望等）"
+                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 resize-none transition-colors duration-150"
                 />
               </div>
 
@@ -327,7 +327,7 @@ const CustomerDetails: React.FC = () => {
                   type="button"
                   variant="outline"
                   onClick={handleBack}
-                  className="flex items-center justify-center border-purple-600 text-purple-600 hover:bg-purple-50 w-1/2"
+                  className="flex items-center justify-center border-blue-600 text-blue-600 hover:bg-blue-50 w-1/2"
                 >
                   &larr; 3.日時へ戻る
                 </Button>

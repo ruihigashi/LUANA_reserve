@@ -5,7 +5,7 @@ import Button from '../ui/Button';
 
 const ConfirmReservation: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center px-4 py-12 animate-fadeIn">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-50 flex items-center justify-center px-4 py-12 animate-fadeIn">
       <div className="bg-white shadow-xl rounded-2xl p-8 max-w-md w-full text-center space-y-8">
         {/* ✅ 成功マーク */}
         <div className="flex justify-center">
@@ -16,7 +16,7 @@ const ConfirmReservation: React.FC = () => {
 
         {/* ✅ メッセージ */}
         <div>
-          <h2 className="text-3xl font-bold text-purple-900 mb-2">
+          <h2 className="text-3xl font-bold text-blue-900 mb-2">
             ご予約が完了しました！
           </h2>
           <p className="text-gray-700">
@@ -27,13 +27,13 @@ const ConfirmReservation: React.FC = () => {
         {/* ✅ ボタン */}
         <div className="space-y-3">
           <Link to="/reservation">
-            <Button className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center">
+            <Button className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center mb-2">
               <Calendar className="w-5 h-5 mr-2" />
               別の予約をする
             </Button>
           </Link>
           <Link to="/">
-            <Button variant="outline" className="w-full border-purple-600 text-purple-600 hover:bg-purple-50 flex items-center justify-center">
+            <Button variant="outline" className="w-full border-blue-600 text-blue-600 hover:bg-purple-50 flex items-center justify-center">
               <Home className="w-5 h-5 mr-2" />
               ホームに戻る
             </Button>
