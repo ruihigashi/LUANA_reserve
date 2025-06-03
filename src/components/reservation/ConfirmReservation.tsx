@@ -1,7 +1,7 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { CheckCircle, Calendar, Home } from 'lucide-react';
-import Button from '../ui/Button';
+import React from 'react'
+import { Link } from 'react-router-dom'
+import { CheckCircle, Calendar, Home } from 'lucide-react'
+import Button from '../ui/Button'
 
 const ConfirmReservation: React.FC = () => {
   return (
@@ -15,25 +15,34 @@ const ConfirmReservation: React.FC = () => {
         </div>
 
         {/* ✅ メッセージ */}
-        <div>
-          <h2 className="text-3xl font-bold text-blue-900 mb-2">
+        <div className="space-y-2">
+          <h2 className="text-3xl font-bold text-blue-900">
             ご予約が完了しました！
           </h2>
           <p className="text-gray-700">
-            ご予約ありがとうございます。<br />当日、心よりお待ちしております。
+            ご予約ありがとうございます。<br />
+            当日、心よりお待ちしております。
+          </p>
+          {/* 追加文言（"過ぎますと" で改行） */}
+          <p className="text-sm text-red-600">
+            ※当日はご予約時間から15分を過ぎますと<br />
+            自動的にキャンセル扱いとなりますので、ご了承ください。
           </p>
         </div>
 
         {/* ✅ ボタン */}
         <div className="space-y-3">
           <Link to="/reservation">
-            <Button className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center mb-2">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center mb-2">
               <Calendar className="w-5 h-5 mr-2" />
               別の予約をする
             </Button>
           </Link>
           <Link to="/">
-            <Button variant="outline" className="w-full border-blue-600 text-blue-600 hover:bg-purple-50 flex items-center justify-center">
+            <Button
+              variant="outline"
+              className="w-full border-blue-600 text-blue-600 hover:bg-purple-50 flex items-center justify-center"
+            >
               <Home className="w-5 h-5 mr-2" />
               ホームに戻る
             </Button>
@@ -41,7 +50,7 @@ const ConfirmReservation: React.FC = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default ConfirmReservation;
+export default ConfirmReservation

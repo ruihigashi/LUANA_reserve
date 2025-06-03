@@ -336,7 +336,7 @@ const CustomerDetails: React.FC = () => {
                   disabled={!isFormValid}
                   className={`flex items-center justify-center w-1/2 ${
                     isFormValid
-                      ? 'bg-green-600 hover:bg-green-700 text-white'
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
                       : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                   }`}
                 >

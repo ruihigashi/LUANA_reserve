@@ -1,7 +1,7 @@
 // src/components/reservation/DateTimeSelection.tsx
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   format,
   addDays,
@@ -11,234 +11,228 @@ import {
   isSameDay,
   isBefore,
   startOfDay,
-  parse,
-  isAfter,
-} from 'date-fns';
-import { useReservation } from '../../context/ReservationContext';
-import { TimeSlot } from '../../types';
-import { supabase } from '../../lib/supabase';
-import Button from '../ui/Button';
+} from 'date-fns'
+import { useReservation } from '../../context/ReservationContext'
+import { TimeSlot } from '../../types'
+import { supabase } from '../../lib/supabase'
+import Button from '../ui/Button'
 
 interface DayAvailability {
-  date: Date;
-  hasAvailable: boolean;
+  date: Date
+  hasAvailable: boolean
 }
 
 interface WeeklySlot {
-  date: Date;
-  slots: TimeSlot[];
+  date: Date
+  slots: TimeSlot[]
 }
 
 const DateTimeSelection: React.FC = () => {
   const {
-    selectedServices,       // (Service | SetMenu)[]
+    selectedServices, // (Service | SetMenu)[]
     selectedDate,
     setSelectedDate,
     selectedTimeSlot,
     setSelectedTimeSlot,
-  } = useReservation();
-  const navigate = useNavigate();
+  } = useReservation()
+  const navigate = useNavigate()
 
   // 今日の日付（時刻部分を切り捨て）
-  const [todayStart] = useState<Date>(startOfDay(new Date()));
+  const [todayStart] = useState<Date>(startOfDay(new Date()))
+  // 最大予約可能日 = 今日 + 45日
+  const [maxSelectable] = useState<Date>(addDays(todayStart, 45))
 
   // 現在時刻
-  const [now, setNow] = useState<Date>(new Date());
+  const [now, setNow] = useState<Date>(new Date())
 
-  // 時刻更新用（分更新）
+  // 時刻更新用（30秒ごと）
   useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 30 * 1000);
-    return () => clearInterval(timer);
-  }, []);
+    const timer = setInterval(() => setNow(new Date()), 30 * 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   // ──────────────────────────────────────────────
-  // カレンダー（月）用ステート
-  const [displayedMonth, setDisplayedMonth] = useState<Date>(new Date());
-  const [monthDays, setMonthDays] = useState<DayAvailability[]>([]);
-  const [isLoadingMonth, setIsLoadingMonth] = useState<boolean>(false);
-  const [monthError, setMonthError] = useState<string | null>(null);
+  // カレンダー月用ステート
+  const [displayedMonth, setDisplayedMonth] = useState<Date>(new Date())
+  const [monthDays, setMonthDays] = useState<DayAvailability[]>([])
+  const [isLoadingMonth, setIsLoadingMonth] = useState<boolean>(false)
+  const [monthError, setMonthError] = useState<string | null>(null)
 
   // 週間グリッド用ステート
-  const [weeklySlots, setWeeklySlots] = useState<WeeklySlot[]>([]);
-  const [isLoadingWeek, setIsLoadingWeek] = useState<boolean>(false);
-  const [weekError, setWeekError] = useState<string | null>(null);
+  const [weeklySlots, setWeeklySlots] = useState<WeeklySlot[]>([])
+  const [isLoadingWeek, setIsLoadingWeek] = useState<boolean>(false)
+  const [weekError, setWeekError] = useState<string | null>(null)
 
   // ──────────────────────────────
   // 1) 月カレンダー用データ取得
   useEffect(() => {
     const fetchMonthAvailability = async () => {
-      setIsLoadingMonth(true);
-      setMonthError(null);
+      setIsLoadingMonth(true)
+      setMonthError(null)
 
       try {
-        const firstOfMonth = startOfMonth(displayedMonth);
-        const lastOfMonth = endOfMonth(displayedMonth);
-        const firstStr = format(firstOfMonth, 'yyyy-MM-dd');
-        const lastStr = format(lastOfMonth, 'yyyy-MM-dd');
+        const firstOfMonth = startOfMonth(displayedMonth)
+        const lastOfMonth = endOfMonth(displayedMonth)
+        const firstStr = format(firstOfMonth, 'yyyy-MM-dd')
+        const lastStr = format(lastOfMonth, 'yyyy-MM-dd')
 
         const { data, error } = await supabase
           .from('time_slots')
           .select('date, is_available')
           .gte('date', firstStr)
-          .lte('date', lastStr);
+          .lte('date', lastStr)
 
-        if (error) throw error;
+        if (error) throw error
 
-        const availabilityMap: Record<string, boolean> = {};
+        const availabilityMap: Record<string, boolean> = {}
         data?.forEach((slot: { date: string; is_available: boolean }) => {
           if (slot.is_available) {
-            availabilityMap[slot.date] = true;
+            availabilityMap[slot.date] = true
           }
-        });
+        })
 
         const daysArray = eachDayOfInterval({
           start: firstOfMonth,
           end: lastOfMonth,
-        });
+        })
 
         const daysWithAvailability: DayAvailability[] = daysArray.map((d) => {
-          const key = format(d, 'yyyy-MM-dd');
-          if (isBefore(d, todayStart)) {
-            return { date: d, hasAvailable: false };
+          const key = format(d, 'yyyy-MM-dd')
+          // 過去日または最大予約日を超える日は不可
+          if (isBefore(d, todayStart) || isBefore(maxSelectable, d)) {
+            return { date: d, hasAvailable: false }
           }
           return {
             date: d,
             hasAvailable: availabilityMap[key] === true,
-          };
-        });
+          }
+        })
 
-        setMonthDays(daysWithAvailability);
+        setMonthDays(daysWithAvailability)
       } catch (e) {
-        console.error('[DateTimeSelection] 月カレンダー取得エラー:', e);
-        setMonthError('カレンダーの読み込みに失敗しました。');
+        console.error('[DateTimeSelection] 月カレンダー取得エラー:', e)
+        setMonthError('カレンダーの読み込みに失敗しました。')
       } finally {
-        setIsLoadingMonth(false);
+        setIsLoadingMonth(false)
       }
-    };
+    }
 
-    fetchMonthAvailability();
-  }, [displayedMonth, todayStart]);
+    fetchMonthAvailability()
+  }, [displayedMonth, todayStart, maxSelectable])
 
   // ──────────────────────────────
   // 2) 週グリッド用のスロット取得
   useEffect(() => {
     if (!selectedDate) {
-      setWeeklySlots([]);
-      return;
+      setWeeklySlots([])
+      return
     }
 
     const fetchWeeklySlots = async () => {
-      setIsLoadingWeek(true);
-      setWeekError(null);
+      setIsLoadingWeek(true)
+      setWeekError(null)
 
       try {
-        const weekDates = Array.from({ length: 7 }, (_, i) =>
-          addDays(selectedDate, i)
-        );
-        const dateStrings = weekDates.map((d) => format(d, 'yyyy-MM-dd'));
+        const weekDates = Array.from({ length: 7 }, (_, i) => addDays(selectedDate, i))
+        const dateStrings = weekDates.map((d) => format(d, 'yyyy-MM-dd'))
 
         const { data, error } = await supabase
           .from('time_slots')
           .select('id, date, start_time, is_available')
           .in('date', dateStrings)
-          .order('start_time', { ascending: true });
+          .order('start_time', { ascending: true })
 
-        if (error) throw error;
+        if (error) throw error
 
-        const grouped: Record<string, TimeSlot[]> = {};
+        const grouped: Record<string, TimeSlot[]> = {}
         data?.forEach((slot: TimeSlot) => {
           if (!grouped[slot.date]) {
-            grouped[slot.date] = [];
+            grouped[slot.date] = []
           }
-          grouped[slot.date].push(slot);
-        });
+          grouped[slot.date].push(slot)
+        })
 
         const weekSlotsArray: WeeklySlot[] = weekDates.map((d) => {
-          const key = format(d, 'yyyy-MM-dd');
+          const key = format(d, 'yyyy-MM-dd')
           return {
             date: d,
             slots: grouped[key] ?? [],
-          };
-        });
+          }
+        })
 
-        setWeeklySlots(weekSlotsArray);
+        setWeeklySlots(weekSlotsArray)
       } catch (e) {
-        console.error('[DateTimeSelection] 週間スロット取得エラー:', e);
-        setWeekError('空き時間の取得に失敗しました。');
+        console.error('[DateTimeSelection] 週間スロット取得エラー:', e)
+        setWeekError('空き時間の取得に失敗しました。')
       } finally {
-        setIsLoadingWeek(false);
+        setIsLoadingWeek(false)
       }
-    };
+    }
 
-    fetchWeeklySlots();
-  }, [selectedDate]);
+    fetchWeeklySlots()
+  }, [selectedDate])
 
   // ──────────────────────────────
   // 月切り替え
   const goToPreviousMonth = () => {
     setDisplayedMonth((prev) => {
-      const firstOfPrevMonth = addDays(startOfMonth(prev), -1);
-      return startOfMonth(firstOfPrevMonth);
-    });
-  };
+      const firstOfPrevMonth = addDays(startOfMonth(prev), -1)
+      return startOfMonth(firstOfPrevMonth)
+    })
+  }
   const goToNextMonth = () => {
-    const firstOfNextMonth = addDays(endOfMonth(displayedMonth), 1);
-    setDisplayedMonth(startOfMonth(firstOfNextMonth));
-  };
+    const firstOfNextMonth = addDays(endOfMonth(displayedMonth), 1)
+    setDisplayedMonth(startOfMonth(firstOfNextMonth))
+  }
 
   // ──────────────────────────────
   // 月カレンダー日付クリック
   const onClickMonthDay = (day: DayAvailability) => {
-    if (!day.hasAvailable) return;
-    setSelectedDate(day.date);
-    setSelectedTimeSlot(null);
-  };
+    if (!day.hasAvailable) return
+    setSelectedDate(day.date)
+    setSelectedTimeSlot(null)
+  }
 
   // ──────────────────────────────
   // 時間帯クリック時
   const onClickTimeSlot = (slot: TimeSlot) => {
-    if (!slot.is_available) return;
-    setSelectedDate(new Date(slot.date));
-    setSelectedTimeSlot(slot);
-    navigate('/reservation/details');
-  };
+    if (!slot.is_available) return
+    setSelectedDate(new Date(slot.date))
+    setSelectedTimeSlot(slot)
+    navigate('/reservation/details')
+  }
 
   // ──────────────────────────────
   // サービス未選択ガード
   useEffect(() => {
     if (selectedServices.length === 0) {
-      navigate('/reservation/services');
+      navigate('/reservation/services')
     }
-  }, [selectedServices, navigate]);
+  }, [selectedServices, navigate])
 
   // ──────────────────────────────
   // サービスの合計所要スロット数を計算（30分刻みに換算）
   // 例: 120分 → 4 スロット
   const totalRequiredSlots = selectedServices.reduce((sum, svc) => {
-    const slots = Math.ceil(svc.duration / 30);
-    return sum + slots;
-  }, 0);
+    const slots = Math.ceil(svc.duration / 30)
+    return sum + slots
+  }, 0)
 
   // ──────────────────────────────
   // ある日のスロット一覧で、index から連続して "必要な数" の空きスロットがあるか？
   const hasConsecutiveSlots = (slots: TimeSlot[], startIndex: number) => {
-    if (startIndex + totalRequiredSlots > slots.length) return false;
+    if (startIndex + totalRequiredSlots > slots.length) return false
     for (let i = startIndex; i < startIndex + totalRequiredSlots; i++) {
       if (!slots[i].is_available) {
-        return false;
+        return false
+      }
+      // さらに、スロット日時自体が現在を過ぎていないかチェック
+      const slotDateTime = new Date(`${slots[i].date}T${slots[i].start_time}`)
+      if (slotDateTime < now) {
+        return false
       }
     }
-    return true;
-  };
-
-  // ──────────────────────────────
-  // 当日かつ17:30以降かどうか
-  function isTodayAndPast1730(dateStr: string) {
-    const today = format(now, 'yyyy-MM-dd');
-    if (dateStr !== today) return false;
-    // 現在時刻が17:30以降
-    const currentTime = format(now, 'HH:mm:ss');
-    return currentTime >= '17:30:00';
+    return true
   }
 
   return (
@@ -294,9 +288,9 @@ const DateTimeSelection: React.FC = () => {
 
             {/* 当月の日付セル */}
             {monthDays.map((day) => {
-              const isToday = isSameDay(day.date, todayStart);
+              const isToday = isSameDay(day.date, todayStart)
               const isSelected =
-                selectedDate && isSameDay(day.date, selectedDate);
+                selectedDate && isSameDay(day.date, selectedDate)
 
               return (
                 <button
@@ -329,7 +323,7 @@ const DateTimeSelection: React.FC = () => {
                     )}
                   </span>
                 </button>
-              );
+              )
             })}
           </div>
         )}
@@ -374,9 +368,9 @@ const DateTimeSelection: React.FC = () => {
                 <tbody>
                   {Array.from({ length: 22 }, (_, idx) => {
                     // 09:00 ～ 19:30（30分刻み）
-                    const hour = 9 + Math.floor(idx / 2);
-                    const minute = idx % 2 === 0 ? '00' : '30';
-                    const timeLabel = `${hour.toString().padStart(2, '0')}:${minute}:00`;
+                    const hour = 9 + Math.floor(idx / 2)
+                    const minute = idx % 2 === 0 ? '00' : '30'
+                    const timeLabel = `${hour.toString().padStart(2, '0')}:${minute}:00`
 
                     return (
                       <tr key={timeLabel}>
@@ -384,41 +378,46 @@ const DateTimeSelection: React.FC = () => {
                           {`${hour.toString().padStart(2, '0')}:${minute}`}
                         </td>
                         {weeklySlots.map((w) => {
-                          const slots = w.slots;
+                          const slots = w.slots
                           const index = slots.findIndex(
                             (s) => s.start_time === timeLabel
-                          );
-                          const found = index !== -1 ? slots[index] : undefined;
+                          )
+                          const found = index !== -1 ? slots[index] : undefined
+
+                          // スロット日時を作成
+                          const slotDateTime = new Date(
+                            `${format(w.date, 'yyyy-MM-dd')}T${timeLabel}`
+                          )
 
                           // ボタン表示用のテキストとクラスを決定
-                          let cellText: string;
-                          let cellClass: string;
+                          let cellText: string
+                          let cellClass: string
 
-                          // 17:30以降なら今日分はすべて×
-                          const isThisDayToday = format(w.date, 'yyyy-MM-dd') === format(now, 'yyyy-MM-dd');
-                          const isPast1730 = isThisDayToday && format(now, 'HH:mm:ss') >= '17:30:00';
-
-                          if (isPast1730) {
-                            cellText = '×';
-                            cellClass = 'bg-gray-200 text-gray-500 cursor-not-allowed';
+                          // 日付が過去、あるいは最大予約可能日を超える場合は ×
+                          if (
+                            slotDateTime < now ||
+                            isBefore(maxSelectable, w.date)
+                          ) {
+                            cellText = '×'
+                            cellClass = 'bg-gray-200 text-gray-500 cursor-not-allowed'
                           } else if (!found) {
                             // そもそもスロットがない（レコードがない）→ "-"
-                            cellText = '-';
-                            cellClass = 'text-gray-300 cursor-not-allowed';
+                            cellText = '-'
+                            cellClass = 'text-gray-300 cursor-not-allowed'
                           } else if (!found.is_available) {
                             // スロットはあるが is_available: false → "×"
-                            cellText = '×';
-                            cellClass = 'bg-gray-200 text-gray-500 cursor-not-allowed';
+                            cellText = '×'
+                            cellClass = 'bg-gray-200 text-gray-500 cursor-not-allowed'
                           } else {
                             // スロットはあり、is_available: true
                             if (!hasConsecutiveSlots(slots, index)) {
-                              // 連続スロット不足 → "-" にする
-                              cellText = '-';
-                              cellClass = 'text-gray-300 cursor-not-allowed';
+                              // 連続スロット不足 → "-"
+                              cellText = '-'
+                              cellClass = 'text-gray-300 cursor-not-allowed'
                             } else {
                               // 連続スロット十分 → "○"
-                              cellText = '○';
-                              cellClass = 'bg-green-100 hover:bg-green-200 text-green-800';
+                              cellText = '○'
+                              cellClass = 'bg-green-100 hover:bg-green-200 text-green-800'
                             }
                           }
 
@@ -437,10 +436,10 @@ const DateTimeSelection: React.FC = () => {
                                 {cellText}
                               </button>
                             </td>
-                          );
+                          )
                         })}
                       </tr>
-                    );
+                    )
                   })}
                 </tbody>
               </table>
@@ -451,20 +450,17 @@ const DateTimeSelection: React.FC = () => {
 
       {/* 戻るボタン */}
       <div className="flex justify-start">
-        <Button
-          variant="outline"
-          onClick={() => navigate('/reservation/services')}
-        >
+        <Button variant="outline" onClick={() => navigate('/reservation/services')}>
           &larr; 前に戻る
         </Button>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // 月初めの曜日を返す
 function dayOfWeek(date: Date): number {
-  return startOfMonth(date).getDay();
+  return startOfMonth(date).getDay()
 }
 
-export default DateTimeSelection;
+export default DateTimeSelection
