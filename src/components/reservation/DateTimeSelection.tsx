@@ -11,6 +11,7 @@ import {
   isSameDay,
   isBefore,
   startOfDay,
+  addMinutes,
 } from 'date-fns'
 import { useReservation } from '../../context/ReservationContext'
 import { TimeSlot } from '../../types'
@@ -27,9 +28,16 @@ interface WeeklySlot {
   slots: TimeSlot[]
 }
 
+// ──────────────────────────────────────────────
+// 「最終予約受付開始時刻」を定義 (例: 17:30 が最終受付)
+const LAST_BOOKING_START = '17:30:00'
+// 「予約開始時刻」を定義 (例: 10:00 から受付開始)
+const FIRST_BOOKING_START = '10:00:00'
+// ──────────────────────────────────────────────
+
 const DateTimeSelection: React.FC = () => {
   const {
-    selectedServices, // (Service | SetMenu)[]
+    selectedServices,
     selectedDate,
     setSelectedDate,
     selectedTimeSlot,
@@ -45,14 +53,14 @@ const DateTimeSelection: React.FC = () => {
   // 現在時刻
   const [now, setNow] = useState<Date>(new Date())
 
-  // 時刻更新用（30秒ごと）
+  // 30秒ごとに now を更新
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30 * 1000)
     return () => clearInterval(timer)
   }, [])
 
   // ──────────────────────────────────────────────
-  // カレンダー月用ステート
+  // 月カレンダー用ステート
   const [displayedMonth, setDisplayedMonth] = useState<Date>(new Date())
   const [monthDays, setMonthDays] = useState<DayAvailability[]>([])
   const [isLoadingMonth, setIsLoadingMonth] = useState<boolean>(false)
@@ -63,7 +71,7 @@ const DateTimeSelection: React.FC = () => {
   const [isLoadingWeek, setIsLoadingWeek] = useState<boolean>(false)
   const [weekError, setWeekError] = useState<string | null>(null)
 
-  // ──────────────────────────────
+  // ──────────────────────────────────────────────
   // 1) 月カレンダー用データ取得
   useEffect(() => {
     const fetchMonthAvailability = async () => {
@@ -120,7 +128,7 @@ const DateTimeSelection: React.FC = () => {
     fetchMonthAvailability()
   }, [displayedMonth, todayStart, maxSelectable])
 
-  // ──────────────────────────────
+  // ──────────────────────────────────────────────
   // 2) 週グリッド用のスロット取得
   useEffect(() => {
     if (!selectedDate) {
@@ -133,7 +141,9 @@ const DateTimeSelection: React.FC = () => {
       setWeekError(null)
 
       try {
-        const weekDates = Array.from({ length: 7 }, (_, i) => addDays(selectedDate, i))
+        const weekDates = Array.from({ length: 7 }, (_, i) =>
+          addDays(selectedDate, i)
+        )
         const dateStrings = weekDates.map((d) => format(d, 'yyyy-MM-dd'))
 
         const { data, error } = await supabase
@@ -172,7 +182,7 @@ const DateTimeSelection: React.FC = () => {
     fetchWeeklySlots()
   }, [selectedDate])
 
-  // ──────────────────────────────
+  // ──────────────────────────────────────────────
   // 月切り替え
   const goToPreviousMonth = () => {
     setDisplayedMonth((prev) => {
@@ -185,7 +195,7 @@ const DateTimeSelection: React.FC = () => {
     setDisplayedMonth(startOfMonth(firstOfNextMonth))
   }
 
-  // ──────────────────────────────
+  // ──────────────────────────────────────────────
   // 月カレンダー日付クリック
   const onClickMonthDay = (day: DayAvailability) => {
     if (!day.hasAvailable) return
@@ -193,7 +203,7 @@ const DateTimeSelection: React.FC = () => {
     setSelectedTimeSlot(null)
   }
 
-  // ──────────────────────────────
+  // ──────────────────────────────────────────────
   // 時間帯クリック時
   const onClickTimeSlot = (slot: TimeSlot) => {
     if (!slot.is_available) return
@@ -202,7 +212,7 @@ const DateTimeSelection: React.FC = () => {
     navigate('/reservation/details')
   }
 
-  // ──────────────────────────────
+  // ──────────────────────────────────────────────
   // サービス未選択ガード
   useEffect(() => {
     if (selectedServices.length === 0) {
@@ -210,31 +220,7 @@ const DateTimeSelection: React.FC = () => {
     }
   }, [selectedServices, navigate])
 
-  // ──────────────────────────────
-  // サービスの合計所要スロット数を計算（30分刻みに換算）
-  // 例: 120分 → 4 スロット
-  const totalRequiredSlots = selectedServices.reduce((sum, svc) => {
-    const slots = Math.ceil(svc.duration / 30)
-    return sum + slots
-  }, 0)
-
-  // ──────────────────────────────
-  // ある日のスロット一覧で、index から連続して "必要な数" の空きスロットがあるか？
-  const hasConsecutiveSlots = (slots: TimeSlot[], startIndex: number) => {
-    if (startIndex + totalRequiredSlots > slots.length) return false
-    for (let i = startIndex; i < startIndex + totalRequiredSlots; i++) {
-      if (!slots[i].is_available) {
-        return false
-      }
-      // さらに、スロット日時自体が現在を過ぎていないかチェック
-      const slotDateTime = new Date(`${slots[i].date}T${slots[i].start_time}`)
-      if (slotDateTime < now) {
-        return false
-      }
-    }
-    return true
-  }
-
+  // ──────────────────────────────────────────────
   return (
     <div className="py-8 px-4 max-w-3xl mx-auto">
       {/* タイトル */}
@@ -366,8 +352,8 @@ const DateTimeSelection: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {Array.from({ length: 22 }, (_, idx) => {
-                    // 09:00 ～ 19:30（30分刻み）
+                  {Array.from({ length: 20 }, (_, idx) => {
+                    // 09:00 ～ 18:30（30分刻み）
                     const hour = 9 + Math.floor(idx / 2)
                     const minute = idx % 2 === 0 ? '00' : '30'
                     const timeLabel = `${hour.toString().padStart(2, '0')}:${minute}:00`
@@ -375,7 +361,8 @@ const DateTimeSelection: React.FC = () => {
                     return (
                       <tr key={timeLabel}>
                         <td className="border px-2 py-1 text-center text-sm bg-white">
-                          {`${hour.toString().padStart(2, '0')}:${minute}`}
+                          {/* 時刻に「～」を追加 */}
+                          {`${hour.toString().padStart(2, '0')}:${minute}~`}
                         </td>
                         {weeklySlots.map((w) => {
                           const slots = w.slots
@@ -384,40 +371,48 @@ const DateTimeSelection: React.FC = () => {
                           )
                           const found = index !== -1 ? slots[index] : undefined
 
-                          // スロット日時を作成
-                          const slotDateTime = new Date(
-                            `${format(w.date, 'yyyy-MM-dd')}T${timeLabel}`
-                          )
-
                           // ボタン表示用のテキストとクラスを決定
                           let cellText: string
                           let cellClass: string
 
-                          // 日付が過去、あるいは最大予約可能日を超える場合は ×
-                          if (
-                            slotDateTime < now ||
-                            isBefore(maxSelectable, w.date)
-                          ) {
-                            cellText = '×'
-                            cellClass = 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                          } else if (!found) {
-                            // そもそもスロットがない（レコードがない）→ "-"
+                          // ── (1) まず「10:00 より前」は受付対象外 (-) ──
+                          if (timeLabel < FIRST_BOOKING_START) {
                             cellText = '-'
                             cellClass = 'text-gray-300 cursor-not-allowed'
-                          } else if (!found.is_available) {
-                            // スロットはあるが is_available: false → "×"
-                            cellText = '×'
-                            cellClass = 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                          } else {
-                            // スロットはあり、is_available: true
-                            if (!hasConsecutiveSlots(slots, index)) {
-                              // 連続スロット不足 → "-"
-                              cellText = '-'
-                              cellClass = 'text-gray-300 cursor-not-allowed'
-                            } else {
-                              // 連続スロット十分 → "○"
-                              cellText = '○'
-                              cellClass = 'bg-green-100 hover:bg-green-200 text-green-800'
+                          }
+                          else {
+                            // ── (2) 次に「過去日時 or 最大予約可能日を超えている」は × ──
+                            const slotDateTime = new Date(
+                              `${format(w.date, 'yyyy-MM-dd')}T${timeLabel}`
+                            )
+                            if (slotDateTime < now || isBefore(maxSelectable, w.date)) {
+                              cellText = '×'
+                              cellClass = 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                            }
+                            else {
+                              // ── (3) さらに「最終受付時刻より後」は受付対象外 (-) ──
+                              if (timeLabel > LAST_BOOKING_START) {
+                                cellText = '-'
+                                cellClass = 'text-gray-300 cursor-not-allowed'
+                              }
+                              else {
+                                // ── (4) ここまでくれば「10:00 以降かつ 過去でもなく、最終受付まで の未来枠」 ──
+                                if (!found) {
+                                  // (4-1) DB レコードがない = ×
+                                  cellText = '×'
+                                  cellClass = 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                }
+                                else if (!found.is_available) {
+                                  // (4-2) レコードがあるが予約済み = ×
+                                  cellText = '×'
+                                  cellClass = 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                }
+                                else {
+                                  // (4-3) レコードがあり、かつ空き = ○
+                                  cellText = '○'
+                                  cellClass = 'bg-green-100 hover:bg-green-200 text-green-800'
+                                }
+                              }
                             }
                           }
 
