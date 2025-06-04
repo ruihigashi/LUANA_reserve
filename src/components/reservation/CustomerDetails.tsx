@@ -195,12 +195,12 @@ const CustomerDetails: React.FC = () => {
             <div className="flex items-center space-x-3">
               <Clock className="w-5 h-5 text-blue-900" />
               <span className="text-gray-700 font-medium w-20">日時</span>
-              <span className="text-gray-900">{formattedDateTime}</span>
+              <span className="text-gray-900 text-sm">{formattedDateTime}</span>
             </div>
             <div className="flex items-center space-x-3">
               <Tag className="w-5 h-5 text-blue-900" />
               <span className="text-gray-700 font-medium w-20">メニュー</span>
-              <span className="text-gray-900">{serviceNames}</span>
+              <span className="text-gray-900 text-sm">{serviceNames}</span>
             </div>
           </div>
         </div>
@@ -217,7 +217,7 @@ const CustomerDetails: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 mb-1">
-                    姓 <span className="text-red-500">必須</span>
+                    姓
                   </label>
                   <input
                     type="text"
@@ -234,7 +234,7 @@ const CustomerDetails: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-gray-700 mb-1">
-                    名 <span className="text-red-500">必須</span>
+                    名
                   </label>
                   <input
                     type="text"
@@ -255,7 +255,7 @@ const CustomerDetails: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 mb-1">
-                    セイ <span className="text-red-500">必須</span>
+                    セイ
                   </label>
                   <input
                     type="text"
@@ -272,7 +272,7 @@ const CustomerDetails: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-gray-700 mb-1">
-                    メイ <span className="text-red-500">必須</span>
+                    メイ
                   </label>
                   <input
                     type="text"
@@ -292,7 +292,7 @@ const CustomerDetails: React.FC = () => {
               {/** 電話番号 **/}
               <div>
                 <label className="block text-gray-700 mb-1">
-                  電話番号 <span className="text-red-500">必須</span>
+                  電話番号
                 </label>
                 <input
                   type="tel"
@@ -327,7 +327,7 @@ const CustomerDetails: React.FC = () => {
                   type="button"
                   variant="outline"
                   onClick={handleBack}
-                  className="flex items-center justify-center border-blue-600 text-blue-600 hover:bg-blue-50 w-1/2"
+                  className="flex items-center justify-center border-blue-600 text-blue-600 hover:bg-blue-50 w-1/2 text-sm"
                 >
                   &larr; 3.日時へ戻る
                 </Button>

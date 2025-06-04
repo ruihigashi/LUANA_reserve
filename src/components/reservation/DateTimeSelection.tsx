@@ -224,7 +224,7 @@ const DateTimeSelection: React.FC = () => {
   return (
     <div className="py-8 px-4 max-w-3xl mx-auto">
       {/* タイトル */}
-      <h2 className="text-3xl font-serif font-bold text-blue-900 mb-6 text-center">
+      <h2 className="text-2xl font-serif font-bold text-blue-900 mb-6 text-center">
         希望日時を選択してください
       </h2>
 
@@ -235,7 +235,7 @@ const DateTimeSelection: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <button
             onClick={goToPreviousMonth}
-            className="text-lg text-gray-600 hover:text-gray-800"
+            className="text-base text-gray-600 hover:text-gray-800"
             aria-label="前の一ヶ月へ"
           >
             &lt; 前の一ヶ月
@@ -245,7 +245,7 @@ const DateTimeSelection: React.FC = () => {
           </span>
           <button
             onClick={goToNextMonth}
-            className="text-lg text-gray-600 hover:text-gray-800"
+            className="text-base text-gray-600 hover:text-gray-800"
             aria-label="次の一ヶ月へ"
           >
             次の一ヶ月 &gt;
