@@ -10,7 +10,7 @@ const Header: React.FC = () => {
         <div className="flex flex-col items-center text-center cursor-pointer">
           <p className="text-xs text-gray-500 tracking-widest font-great">Hair Salon</p>
           <h1
-            className="text-lg font-luana tracking-widest text-gray-700"
+            className="text-lg tracking-widest text-gray-700"
             onClick={() => navigate('/')}
             style={{ userSelect: 'none' }}
           >

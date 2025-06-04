@@ -260,7 +260,7 @@ const ServiceAccordion: React.FC = () => {
       {/* ───────────────────────────────────────────── */}
       {/* 見出し */}
       {/* ───────────────────────────────────────────── */}
-      <h2 className="text-3xl font-serif font-extrabold text-center text-blue-900 mb-10">
+      <h2 className="text-2xl font-serif font-extrabold text-center text-blue-900 mb-10">
         {menuType === 'set'
           ? 'セットメニューを選択してください'
           : '単品メニューを選択してください'}
