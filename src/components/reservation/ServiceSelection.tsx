@@ -172,7 +172,7 @@ const ServiceAccordion: React.FC = () => {
           `}
         >
           <Star className="w-5 h-5" />
-          <span className="font-medium text-base">セットメニュー</span>
+          <span className="font-medium text-sm">セットメニュー</span>
         </button>
 
         {/* 単品メニュー タブ */}
@@ -188,7 +188,7 @@ const ServiceAccordion: React.FC = () => {
           `}
         >
           <Puzzle className="w-5 h-5" />
-          <span className="font-medium text-base">単品メニュー</span>
+          <span className="font-medium text-sm">単品メニュー</span>
         </button>
       </div>
 

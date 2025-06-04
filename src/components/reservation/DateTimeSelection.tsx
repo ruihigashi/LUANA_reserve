@@ -235,7 +235,7 @@ const DateTimeSelection: React.FC = () => {
         <div className="flex justify-between items-center mb-4">
           <button
             onClick={goToPreviousMonth}
-            className="text-base text-gray-600 hover:text-gray-800"
+            className="text-sm text-gray-600 hover:text-gray-800"
             aria-label="前の一ヶ月へ"
           >
             &lt; 前の一ヶ月
@@ -245,7 +245,7 @@ const DateTimeSelection: React.FC = () => {
           </span>
           <button
             onClick={goToNextMonth}
-            className="text-base text-gray-600 hover:text-gray-800"
+            className="text-sm text-gray-600 hover:text-gray-800"
             aria-label="次の一ヶ月へ"
           >
             次の一ヶ月 &gt;

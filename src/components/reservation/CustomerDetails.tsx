@@ -327,7 +327,7 @@ const CustomerDetails: React.FC = () => {
                   type="button"
                   variant="outline"
                   onClick={handleBack}
-                  className="flex items-center justify-center border-blue-600 text-blue-600 hover:bg-blue-50 w-1/2 text-sm"
+                  className="flex items-center justify-center border-blue-600 text-blue-600 hover:bg-blue-50 w-1/2 text-sm mr-2"
                 >
                   &larr; 3.日時へ戻る
                 </Button>
