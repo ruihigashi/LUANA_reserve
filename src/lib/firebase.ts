@@ -11,11 +11,3 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
-
-/* 2. デバッグ用：値が入っているか確認（任意で削除OK） */
-console.table({
-  apiKey:    firebaseConfig.apiKey,
-  projectId: firebaseConfig.projectId,
-  senderId:  firebaseConfig.messagingSenderId,
-  appId:     firebaseConfig.appId,
-});

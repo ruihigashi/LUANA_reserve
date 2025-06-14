@@ -1,10 +1,4 @@
-// public/firebase-messaging-sw.js
-/* -----------------------------------------------------------
-   Firebase Cloud Messaging Service Worker
-   – クリックで管理画面へ遷移できるように改良版
------------------------------------------------------------ */
-
-importScripts(
+portScripts(
   'https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js'
 );
 importScripts(

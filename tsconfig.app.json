@@ -20,5 +20,10 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
+    "exclude": [
+    "node_modules",
+    "dist",
+    "supabase/functions"        // ← 追加
+  ],
   "include": ["src"]
 }
