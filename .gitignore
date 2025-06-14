@@ -25,4 +25,4 @@ dist-ssr
 .env
 
 # Firebase Admin Key
-supabase/functions/serviceAccountKey.json
+/supabase/functions/sendNotification/serviceAccountKey.json

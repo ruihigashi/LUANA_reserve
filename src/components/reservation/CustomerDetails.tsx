@@ -142,7 +142,7 @@ const CustomerDetails: React.FC = () => {
       if (!user || userErr) {
         console.error('ユーザー取得エラー', userErr);
       } else {
-        await fetch('/functions/sendNotification', {
+        await fetch('/functions/sendNotification/index', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
