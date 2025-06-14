@@ -4,8 +4,8 @@ import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  // Content-Type に加え、apikey と Authorization を許可
-  "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization",
+  // ここに Authorization（小文字でも）を入れる
+  "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization, authorization"
 };
 
 serve(async (req) => {
