@@ -5,7 +5,7 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   // Content-Type に加え、apikey と Authorization を許可
-  "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization",
+  "Access-Control-Allow-Headers": "*",
 };
 
 serve(async (req) => {
