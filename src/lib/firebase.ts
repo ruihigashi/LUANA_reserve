@@ -11,3 +11,10 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
+
+console.table({
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  senderId:          import.meta.env.VITE_FIREBASE_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+});
