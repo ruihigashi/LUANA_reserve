@@ -9,9 +9,8 @@ const CORS_HEADERS = {
 };
 
 serve(async (req) => {
-
-  console.log("▶︎ APP_ID:", Deno.env.get("ONE_SIGNAL_APP_ID"));
-  console.log("▶︎ API_KEY:", Deno.env.get("ONE_SIGNAL_API_KEY")?.slice(0, 5) + "…");
+  console.log("▶️ ONE_SIGNAL_APP_ID =", Deno.env.get("ONE_SIGNAL_APP_ID"));
+  console.log("▶️ ONE_SIGNAL_API_KEY =", Deno.env.get("ONE_SIGNAL_API_KEY")?.slice(0, 5) + "…");
   // プリフライト（OPTIONS）はヘッダーだけ返して終わり
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: CORS_HEADERS });
