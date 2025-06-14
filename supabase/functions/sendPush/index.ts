@@ -4,11 +4,14 @@ import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  // ここに Authorization（小文字でも）を入れる
-  "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization, authorization"
+  // Content-Type に加え、apikey と Authorization を許可
+  "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization",
 };
 
 serve(async (req) => {
+
+  console.log("▶︎ APP_ID:", Deno.env.get("ONE_SIGNAL_APP_ID"));
+  console.log("▶︎ API_KEY:", Deno.env.get("ONE_SIGNAL_API_KEY")?.slice(0, 5) + "…");
   // プリフライト（OPTIONS）はヘッダーだけ返して終わり
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: CORS_HEADERS });
