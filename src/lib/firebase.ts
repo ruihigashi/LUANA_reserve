@@ -1,20 +1,21 @@
-// src/lib/firebase.ts
 import { initializeApp } from 'firebase/app';
 import { getMessaging }  from 'firebase/messaging';
 
+/* 1. Vite の環境変数で初期化 */
 const firebaseConfig = {
-  apiKey:            process.env.NEXT_PUBLIC_FIREBASE_API_KEY!,
-  projectId:         process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID!,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_SENDER_ID!,
-  appId:             process.env.NEXT_PUBLIC_FIREBASE_APP_ID!,
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
 
+/* 2. デバッグ用：値が入っているか確認（任意で削除OK） */
 console.table({
-  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
-  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  senderId:          import.meta.env.VITE_FIREBASE_SENDER_ID,
-  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey:    firebaseConfig.apiKey,
+  projectId: firebaseConfig.projectId,
+  senderId:  firebaseConfig.messagingSenderId,
+  appId:     firebaseConfig.appId,
 });
