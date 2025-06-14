@@ -4,7 +4,8 @@ import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  // Content-Type に加え、apikey と Authorization を許可
+  "Access-Control-Allow-Headers": "Content-Type, apikey, Authorization",
 };
 
 serve(async (req) => {
@@ -13,7 +14,6 @@ serve(async (req) => {
     return new Response(null, { headers: CORS_HEADERS });
   }
 
-  // 本番の POST
   try {
     const { customerName, reservationTime } = await req.json();
     const payload = {
@@ -34,12 +34,18 @@ serve(async (req) => {
 
     if (!resp.ok) {
       console.error("OneSignal Error:", await resp.text());
-      return new Response("Notification Failed", { status: 500, headers: CORS_HEADERS });
+      return new Response("Notification Failed", {
+        status: 500,
+        headers: CORS_HEADERS,
+      });
     }
 
     return new Response("OK", { status: 200, headers: CORS_HEADERS });
   } catch (err) {
     console.error("Function Error:", err);
-    return new Response("Internal Error", { status: 500, headers: CORS_HEADERS });
+    return new Response("Internal Error", {
+      status: 500,
+      headers: CORS_HEADERS,
+    });
   }
 });
