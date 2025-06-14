@@ -8,11 +8,10 @@ import { useReservation } from '../../context/ReservationContext';
 import Button from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 
+// Edge Function のエンドポイントを設定
+const NOTIFY_URL = 'https://<your-project>.functions.supabase.co/sendPush';
+
 const CustomerDetails: React.FC = () => {
-  // ─────────────────────────────────────────────────
-  // useReservation から取ってくる状態
-  // （selectedServices, selectedDate, selectedTimeSlot, notes, setNotes）
-  // ─────────────────────────────────────────────────
   const {
     selectedServices,
     selectedDate,
@@ -22,14 +21,12 @@ const CustomerDetails: React.FC = () => {
   } = useReservation();
   const navigate = useNavigate();
 
-  // 「姓」「名」「セイ」「メイ」「電話番号」
   const [lastName, setLastName] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastNameKana, setLastNameKana] = useState<string>('');
   const [firstNameKana, setFirstNameKana] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
 
-  // バリデーション
   const isNameValid =
     lastName.trim() !== '' &&
     firstName.trim() !== '' &&
@@ -39,7 +36,6 @@ const CustomerDetails: React.FC = () => {
   const isFormValid =
     isNameValid && isPhoneValid && !!selectedDate && !!selectedTimeSlot;
 
-  // 「サービスまたは日時が未選択」ならサービス選択に戻すガード
   if (
     !selectedServices ||
     selectedServices.length === 0 ||
@@ -50,7 +46,6 @@ const CustomerDetails: React.FC = () => {
     return null;
   }
 
-  // フォーマット済みの日時表示
   const formattedDateTime = useMemo(() => {
     const datePart = format(selectedDate, 'yyyy年MM月dd日 (E)');
     const timePart = format(
@@ -62,22 +57,18 @@ const CustomerDetails: React.FC = () => {
     return `${datePart}  ${timePart}～`;
   }, [selectedDate, selectedTimeSlot]);
 
-  // 選択サービスの「日本語名」をカンマ区切りで結合
   const serviceNames = useMemo(() => {
     return selectedServices.map((svc) => svc.name).join('、');
   }, [selectedServices]);
 
-  // 合計金額（DB 挿入用に計算）
   const totalPrice = useMemo(() => {
     return selectedServices.reduce((sum, svc) => sum + svc.price, 0);
   }, [selectedServices]);
 
-  // 合計所要時間（分）を計算
   const totalRequiredMinutes = useMemo(() => {
     return selectedServices.reduce((sum, svc) => sum + svc.duration, 0);
   }, [selectedServices]);
 
-  // 「HH:mm:ss の文字列」に minutes を足して戻すユーティリティ
   function incrementTimeByMinutes(baseTime: string, addMin: number): string {
     const [h, m, s] = baseTime.split(':').map(Number);
     const dateObj = new Date(0, 0, 0, h, m, s);
@@ -88,14 +79,10 @@ const CustomerDetails: React.FC = () => {
     )}:${pad(dateObj.getSeconds())}`;
   }
 
-  // 「戻る」 ボタン → 日時選択へ
   const handleBack = () => {
     navigate('/reservation/datetime');
   };
 
-  // ──────────────────────────────────────────────────────────
-  // フォーム送信（顧客テーブルに INSERT → 予約テーブルに INSERT → time_slots 更新）
-  // ──────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) {
@@ -103,16 +90,14 @@ const CustomerDetails: React.FC = () => {
       return;
     }
 
-    // selectedDate は Date 型なので、SQL 用には YYYY-MM-DD にする
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    // 予約終了時刻 = 開始時刻 + totalRequiredMinutes
     const endTimeString = incrementTimeByMinutes(
       selectedTimeSlot.start_time,
       totalRequiredMinutes
-    ); // "HH:mm:ss" 形式
+    );
 
     try {
-      // 1) customers テーブルに INSERT
+      // 顧客登録
       const { data: customerData, error: customerError } = await supabase
         .from('customers')
         .insert({
@@ -124,16 +109,11 @@ const CustomerDetails: React.FC = () => {
         })
         .select('id')
         .single();
-
-      if (customerError) {
-        throw customerError;
-      }
+      if (customerError) throw customerError;
       const newCustomerId = customerData?.id;
-      if (!newCustomerId) {
-        throw new Error('顧客IDが取得できませんでした');
-      }
+      if (!newCustomerId) throw new Error('顧客IDが取得できませんでした');
 
-      // 2) reservations テーブルに INSERT
+      // 予約登録
       const { data: reservationData, error: reservationError } =
         await supabase
           .from('reservations')
@@ -149,30 +129,36 @@ const CustomerDetails: React.FC = () => {
           })
           .select('id')
           .single();
-
-      if (reservationError) {
-        throw reservationError;
-      }
+      if (reservationError) throw reservationError;
       const newReservationId = reservationData?.id;
-      if (!newReservationId) {
-        throw new Error('予約IDが取得できませんでした');
+      if (!newReservationId) throw new Error('予約IDが取得できませんでした');
+
+      // プッシュ通知呼び出し
+      try {
+        await fetch('https://opnrnjipuwjcxtvdnkdp.supabase.co/functions/v1/sendPush', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            customerName: `${lastName} ${firstName}`,
+            reservationTime: `${dateStr} ${selectedTimeSlot.start_time}`,
+          }),
+        });
+      } catch (notifyErr) {
+        console.error('通知エラー:', notifyErr);
       }
 
-      // 3) time_slots テーブルを一括で更新：
-      //    予約が入った日付の start_time 以上、end_time 未満のスロットを is_available = FALSE にする
+      // 時間帯更新
       const { error: updateSlotsError } = await supabase
         .from('time_slots')
         .update({ is_available: false })
         .eq('date', dateStr)
         .gte('start_time', selectedTimeSlot.start_time)
         .lt('start_time', endTimeString);
-
       if (updateSlotsError) {
         console.error('time_slots 更新エラー:', updateSlotsError);
-        // ※ここで失敗しても「予約自体」は完了しているので、運用判断でエラー表示するかどうかを決めてください
       }
 
-      // 4) 予約完了ページへ遷移
+      // 完了ページへ遷移
       navigate('/reservation/confirm', {
         state: { reservationId: newReservationId },
       });
@@ -185,7 +171,7 @@ const CustomerDetails: React.FC = () => {
   return (
     <div className="min-h-screen bg-blue-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-8">
-        {/** ──────────────── ご予約内容カード ──────────────── **/}
+        {/* 予約内容カード */}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 flex items-center">
             <Calendar className="w-5 h-5 text-white mr-2" />
@@ -205,7 +191,7 @@ const CustomerDetails: React.FC = () => {
           </div>
         </div>
 
-        {/** ──────────────── お客様情報入力欄 ──────────────── **/}
+        {/* お客様情報入力欄 */}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 flex items-center">
             <Tag className="w-5 h-5 text-white mr-2" />
@@ -213,12 +199,10 @@ const CustomerDetails: React.FC = () => {
           </div>
           <div className="px-6 py-5 space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/** 漢字（姓・名） **/}
+              {/* 漢字（姓・名） */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-gray-700 mb-1">
-                    姓
-                  </label>
+                  <label className="block text-gray-700 mb-1">姓</label>
                   <input
                     type="text"
                     value={lastName}
@@ -229,13 +213,10 @@ const CustomerDetails: React.FC = () => {
                       lastName.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                    }`}
-                  />
+                    }`} />
                 </div>
                 <div>
-                  <label className="block text-gray-700 mb-1">
-                    名
-                  </label>
+                  <label className="block text-gray-700 mb-1">名</label>
                   <input
                     type="text"
                     value={firstName}
@@ -246,17 +227,14 @@ const CustomerDetails: React.FC = () => {
                       firstName.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                    }`}
-                  />
+                    }`} />
                 </div>
               </div>
 
-              {/** カナ（セイ・メイ） **/}
+              {/* カナ（セイ・メイ） */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-gray-700 mb-1">
-                    セイ
-                  </label>
+                  <label className="block text-gray-700 mb-1">セイ</label>
                   <input
                     type="text"
                     value={lastNameKana}
@@ -267,13 +245,10 @@ const CustomerDetails: React.FC = () => {
                       lastNameKana.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                    }`}
-                  />
+                    }`} />
                 </div>
                 <div>
-                  <label className="block text-gray-700 mb-1">
-                    メイ
-                  </label>
+                  <label className="block text-gray-700 mb-1">メイ</label>
                   <input
                     type="text"
                     value={firstNameKana}
@@ -284,16 +259,13 @@ const CustomerDetails: React.FC = () => {
                       firstNameKana.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                    }`}
-                  />
+                    }`} />
                 </div>
               </div>
 
-              {/** 電話番号 **/}
+              {/* 電話番号 */}
               <div>
-                <label className="block text-gray-700 mb-1">
-                  電話番号
-                </label>
+                <label className="block text-gray-700 mb-1">電話番号</label>
                 <input
                   type="tel"
                   value={phone}
@@ -304,31 +276,26 @@ const CustomerDetails: React.FC = () => {
                     phone.trim() === ''
                       ? 'border-red-500'
                       : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                  }`}
-                />
+                  }`} />
               </div>
 
-              {/** 質問・確認事項（任意） **/}
+              {/* 質問・確認事項（任意） */}
               <div>
-                <label className="block text-gray-700 mb-1">
-                  質問・確認事項（任意）
-                </label>
+                <label className="block text-gray-700 mb-1">質問・確認事項（任意）</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="何かご要望があればご記入ください（例：10時前の予約希望等）"
-                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 resize-none transition-colors duration-150"
-                />
+                  className="w-full h-24 p-3 border border-gray-300.rounded-md.focus:outline-none.focus:ring-2.focus:ring-blue-600.resize-none.transition-colors.duration-150" />
               </div>
 
-              {/** 送信／戻るボタン **/}
+              {/* 送信／戻るボタン */}
               <div className="pt-4 flex justify-between">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleBack}
-                  className="flex items-center justify-center border-blue-600 text-blue-600 hover:bg-blue-50 w-1/2 text-sm mr-2"
-                >
+                  className="flex items-center justify-center border-blue-600 text-blue-600.hover:bg-blue-50 w-1/2.text-sm.mr-2">
                   &larr; 3.日時へ戻る
                 </Button>
                 <Button
@@ -336,10 +303,9 @@ const CustomerDetails: React.FC = () => {
                   disabled={!isFormValid}
                   className={`flex items-center justify-center w-1/2 ${
                     isFormValid
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
+                      ? 'bg-blue-600.hover:bg-blue-700.text-white'
+                      : 'bg-gray-300.text-gray-500.cursor-not-allowed'
+                  }`}>
                   予約送信
                 </Button>
               </div>

@@ -1,31 +1,27 @@
 // @ts-nocheck
-import { serve } from "https://esm.sh/deno_std@0.167.0/http/server.ts";
-import webPush from "https://esm.sh/web-push";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-);
-
-webPush.setVapidDetails(
-  "mailto:you@example.com",
-  Deno.env.get("VAPID_PUBLIC_KEY")!,
-  Deno.env.get("VAPID_PRIVATE_KEY")!
-);
+import { serve } from "https://deno.land/std@0.167.0/http/server.ts";
 
 serve(async (req) => {
-  const { title, body, url } = await req.json();
-  const { data: subs } = await supabase
-    .from("push_subscriptions")
-    .select("subscription");
-  await Promise.all(
-    (subs ?? []).map((row: any) =>
-      webPush.sendNotification(
-        row.subscription,
-        JSON.stringify({ title, body, url })
-      )
-    )
-  );
-  return new Response(JSON.stringify({ success: true }), { status: 200 });
+  const { customerName, reservationTime } = await req.json();
+  const payload = {
+    app_id: Deno.env.get("ONE_SIGNAL_APP_ID"),
+    headings: { en: "【管理者通知】新しい予約が入りました" },
+    contents: { en: `${customerName} 様が ${reservationTime} に予約しました` },
+    included_segments: ["Subscribed Users"],
+  };
+
+  const resp = await fetch("https://onesignal.com/api/v1/notifications", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      Authorization: `Basic ${Deno.env.get("ONE_SIGNAL_API_KEY")}`,
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!resp.ok) {
+    console.error("OneSignal Error:", await resp.text());
+    return new Response("Notification Failed", { status: 500 });
+  }
+  return new Response("OK");
 });
