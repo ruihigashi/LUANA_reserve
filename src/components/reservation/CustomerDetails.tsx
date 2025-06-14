@@ -143,6 +143,14 @@ const CustomerDetails: React.FC = () => {
         },
       });
       if (fnError) console.error('通知エラー:', fnError);
+      // invoke の結果をまとめて受け取る
+      const { data: fnData, error: fnError2 } = await supabase.functions.invoke('sendPush', {
+        body: {
+          customerName: `${lastName} ${firstName}`,
+          reservationTime: `${dateStr} ${selectedTimeSlot.start_time}`,
+        },
+      });
+      console.log('sendPush data=', fnData, 'error=', fnError2);
 
       // 4) 空き時間更新
       const { error: updateSlotsError } = await supabase
@@ -206,11 +214,10 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setLastName(e.target.value)}
                     required
                     placeholder="山田"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${
-                      lastName.trim() === ''
-                        ? 'border-red-500'
-                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                    }`}
+                    className={`w-full p-3 border rounded-md focus:outline-none ${lastName.trim() === ''
+                      ? 'border-red-500'
+                      : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
+                      }`}
                   />
                 </div>
                 <div>
@@ -221,11 +228,10 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setFirstName(e.target.value)}
                     required
                     placeholder="太郎"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${
-                      firstName.trim() === ''
-                        ? 'border-red-500'
-                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                    }`}
+                    className={`w-full p-3 border rounded-md focus:outline-none ${firstName.trim() === ''
+                      ? 'border-red-500'
+                      : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
+                      }`}
                   />
                 </div>
               </div>
@@ -240,11 +246,10 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setLastNameKana(e.target.value)}
                     required
                     placeholder="ヤマダ"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${
-                      lastNameKana.trim() === ''
-                        ? 'border-red-500'
-                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                    }`}
+                    className={`w-full p-3 border rounded-md focus:outline-none ${lastNameKana.trim() === ''
+                      ? 'border-red-500'
+                      : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
+                      }`}
                   />
                 </div>
                 <div>
@@ -255,11 +260,10 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setFirstNameKana(e.target.value)}
                     required
                     placeholder="タロウ"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${
-                      firstNameKana.trim() === ''
-                        ? 'border-red-500'
-                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                    }`}
+                    className={`w-full p-3 border rounded-md focus:outline-none ${firstNameKana.trim() === ''
+                      ? 'border-red-500'
+                      : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
+                      }`}
                   />
                 </div>
               </div>
@@ -268,17 +272,16 @@ const CustomerDetails: React.FC = () => {
               <div>
                 <label className="block text-gray-700 mb-1">電話番号</label>
                 <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    required
-                    placeholder="09012345678"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${
-                      phone.trim() === ''
-                        ? 'border-red-500'
-                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                  placeholder="09012345678"
+                  className={`w-full p-3 border rounded-md focus:outline-none ${phone.trim() === ''
+                    ? 'border-red-500'
+                    : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
                     }`}
-                  />
+                />
               </div>
 
               {/* 質問・確認事項 */}
@@ -305,11 +308,10 @@ const CustomerDetails: React.FC = () => {
                 <Button
                   type="submit"
                   disabled={!isFormValid}
-                  className={`flex items-center justify-center w-1/2 ${
-                    isFormValid
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
+                  className={`flex items-center justify-center w-1/2 ${isFormValid
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
                 >
                   予約送信
                 </Button>
