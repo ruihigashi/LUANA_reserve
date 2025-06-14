@@ -22,7 +22,7 @@ serve(async (req) => {
       app_id: Deno.env.get("ONE_SIGNAL_APP_ID"),
       headings: { en: "【管理者通知】新しい予約が入りました" },
       contents: { en: `${customerName} 様が ${reservationTime} に予約しました` },
-      included_segments: ["Subscribed Users"],
+      included_segments: ["All"],
     };
 
     const resp = await fetch("https://onesignal.com/api/v1/notifications", {

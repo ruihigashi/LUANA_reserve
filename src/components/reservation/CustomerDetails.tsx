@@ -8,9 +8,6 @@ import { useReservation } from '../../context/ReservationContext';
 import Button from '../ui/Button';
 import { supabase } from '../../lib/supabase';
 
-// Edge Function のエンドポイントを設定
-const NOTIFY_URL = 'https://<your-project>.functions.supabase.co/sendPush';
-
 const CustomerDetails: React.FC = () => {
   const {
     selectedServices,
@@ -21,12 +18,14 @@ const CustomerDetails: React.FC = () => {
   } = useReservation();
   const navigate = useNavigate();
 
+  // フォーム入力状態
   const [lastName, setLastName] = useState<string>('');
   const [firstName, setFirstName] = useState<string>('');
   const [lastNameKana, setLastNameKana] = useState<string>('');
   const [firstNameKana, setFirstNameKana] = useState<string>('');
   const [phone, setPhone] = useState<string>('');
 
+  // バリデーション
   const isNameValid =
     lastName.trim() !== '' &&
     firstName.trim() !== '' &&
@@ -36,6 +35,7 @@ const CustomerDetails: React.FC = () => {
   const isFormValid =
     isNameValid && isPhoneValid && !!selectedDate && !!selectedTimeSlot;
 
+  // サービス未選択や日時未選択なら戻す
   if (
     !selectedServices ||
     selectedServices.length === 0 ||
@@ -46,6 +46,7 @@ const CustomerDetails: React.FC = () => {
     return null;
   }
 
+  // 日時表示用フォーマット
   const formattedDateTime = useMemo(() => {
     const datePart = format(selectedDate, 'yyyy年MM月dd日 (E)');
     const timePart = format(
@@ -57,18 +58,21 @@ const CustomerDetails: React.FC = () => {
     return `${datePart}  ${timePart}～`;
   }, [selectedDate, selectedTimeSlot]);
 
-  const serviceNames = useMemo(() => {
-    return selectedServices.map((svc) => svc.name).join('、');
-  }, [selectedServices]);
+  // サービス名の結合・合計金額・合計時間
+  const serviceNames = useMemo(
+    () => selectedServices.map((svc) => svc.name).join('、'),
+    [selectedServices]
+  );
+  const totalPrice = useMemo(
+    () => selectedServices.reduce((sum, svc) => sum + svc.price, 0),
+    [selectedServices]
+  );
+  const totalRequiredMinutes = useMemo(
+    () => selectedServices.reduce((sum, svc) => sum + svc.duration, 0),
+    [selectedServices]
+  );
 
-  const totalPrice = useMemo(() => {
-    return selectedServices.reduce((sum, svc) => sum + svc.price, 0);
-  }, [selectedServices]);
-
-  const totalRequiredMinutes = useMemo(() => {
-    return selectedServices.reduce((sum, svc) => sum + svc.duration, 0);
-  }, [selectedServices]);
-
+  // 時間加算ユーティリティ
   function incrementTimeByMinutes(baseTime: string, addMin: number): string {
     const [h, m, s] = baseTime.split(':').map(Number);
     const dateObj = new Date(0, 0, 0, h, m, s);
@@ -97,7 +101,7 @@ const CustomerDetails: React.FC = () => {
     );
 
     try {
-      // 顧客登録
+      // 1) 顧客登録
       const { data: customerData, error: customerError } = await supabase
         .from('customers')
         .insert({
@@ -110,10 +114,9 @@ const CustomerDetails: React.FC = () => {
         .select('id')
         .single();
       if (customerError) throw customerError;
-      const newCustomerId = customerData?.id;
-      if (!newCustomerId) throw new Error('顧客IDが取得できませんでした');
+      const newCustomerId = customerData!.id;
 
-      // 予約登録
+      // 2) 予約登録
       const { data: reservationData, error: reservationError } =
         await supabase
           .from('reservations')
@@ -130,29 +133,18 @@ const CustomerDetails: React.FC = () => {
           .select('id')
           .single();
       if (reservationError) throw reservationError;
-      const newReservationId = reservationData?.id;
-      if (!newReservationId) throw new Error('予約IDが取得できませんでした');
-      // プッシュ通知呼び出し
-      try {
-        await fetch('https://opnrnjipuwjcxtvdnkdp.supabase.co/functions/v1/sendPush', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            // Supabase の anon public key を必ず付与
-            apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wbnJuamlwdXdqY3h0dmRua2RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzA5ODcsImV4cCI6MjA2MzUwNjk4N30.tOn6MgfxpfA3S14vdCaADmbBnoJ1rjUwNo-Z4ZYOX48',
-            Authorization: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wbnJuamlwdXdqY3h0dmRua2RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzA5ODcsImV4cCI6MjA2MzUwNjk4N30.tOn6MgfxpfA3S14vdCaADmbBnoJ1rjUwNo-Z4ZYOX48`,
-          },
-          body: JSON.stringify({
-            customerName: `${lastName} ${firstName}`,
-            reservationTime: `${dateStr} ${selectedTimeSlot.start_time}`,
-          }),
-        });
-      } catch (notifyErr) {
-        console.error('通知エラー:', notifyErr);
-      }
+      const newReservationId = reservationData!.id;
 
+      // 3) Edge Function で管理者へ通知
+      const { error: fnError } = await supabase.functions.invoke('sendPush', {
+        body: {
+          customerName: `${lastName} ${firstName}`,
+          reservationTime: `${dateStr} ${selectedTimeSlot.start_time}`,
+        },
+      });
+      if (fnError) console.error('通知エラー:', fnError);
 
-      // 時間帯更新
+      // 4) 空き時間更新
       const { error: updateSlotsError } = await supabase
         .from('time_slots')
         .update({ is_available: false })
@@ -163,7 +155,7 @@ const CustomerDetails: React.FC = () => {
         console.error('time_slots 更新エラー:', updateSlotsError);
       }
 
-      // 完了ページへ遷移
+      // 5) 完了ページへ遷移
       navigate('/reservation/confirm', {
         state: { reservationId: newReservationId },
       });
@@ -204,7 +196,7 @@ const CustomerDetails: React.FC = () => {
           </div>
           <div className="px-6 py-5 space-y-4">
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* 漢字（姓・名） */}
+              {/* 姓・名 */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 mb-1">姓</label>
@@ -214,10 +206,12 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setLastName(e.target.value)}
                     required
                     placeholder="山田"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${lastName.trim() === ''
+                    className={`w-full p-3 border rounded-md focus:outline-none ${
+                      lastName.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                      }`} />
+                    }`}
+                  />
                 </div>
                 <div>
                   <label className="block text-gray-700 mb-1">名</label>
@@ -227,14 +221,16 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setFirstName(e.target.value)}
                     required
                     placeholder="太郎"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${firstName.trim() === ''
+                    className={`w-full p-3 border rounded-md focus:outline-none ${
+                      firstName.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                      }`} />
+                    }`}
+                  />
                 </div>
               </div>
 
-              {/* カナ（セイ・メイ） */}
+              {/* カナ */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-gray-700 mb-1">セイ</label>
@@ -244,10 +240,12 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setLastNameKana(e.target.value)}
                     required
                     placeholder="ヤマダ"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${lastNameKana.trim() === ''
+                    className={`w-full p-3 border rounded-md focus:outline-none ${
+                      lastNameKana.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                      }`} />
+                    }`}
+                  />
                 </div>
                 <div>
                   <label className="block text-gray-700 mb-1">メイ</label>
@@ -257,10 +255,12 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setFirstNameKana(e.target.value)}
                     required
                     placeholder="タロウ"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${firstNameKana.trim() === ''
+                    className={`w-full p-3 border rounded-md focus:outline-none ${
+                      firstNameKana.trim() === ''
                         ? 'border-red-500'
                         : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                      }`} />
+                    }`}
+                  />
                 </div>
               </div>
 
@@ -268,43 +268,49 @@ const CustomerDetails: React.FC = () => {
               <div>
                 <label className="block text-gray-700 mb-1">電話番号</label>
                 <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                  placeholder="09012345678"
-                  className={`w-full p-3 border rounded-md focus:outline-none ${phone.trim() === ''
-                      ? 'border-red-500'
-                      : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                    }`} />
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                    placeholder="09012345678"
+                    className={`w-full p-3 border rounded-md focus:outline-none ${
+                      phone.trim() === ''
+                        ? 'border-red-500'
+                        : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
+                    }`}
+                  />
               </div>
 
-              {/* 質問・確認事項（任意） */}
+              {/* 質問・確認事項 */}
               <div>
                 <label className="block text-gray-700 mb-1">質問・確認事項（任意）</label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  placeholder="何かご要望があればご記入ください（例：10時前の予約希望等）"
-                  className="w-full h-24 p-3 border border-gray-300.rounded-md.focus:outline-none.focus:ring-2.focus:ring-blue-600.resize-none.transition-colors.duration-150" />
+                  placeholder="何かご要望があればご記入ください"
+                  className="w-full h-24 p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 resize-none"
+                />
               </div>
 
-              {/* 送信／戻るボタン */}
+              {/* ボタン */}
               <div className="pt-4 flex justify-between">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handleBack}
-                  className="flex items-center justify-center border-blue-600 text-blue-600.hover:bg-blue-50 w-1/2.text-sm.mr-2">
+                  className="flex items-center justify-center border-blue-600 text-blue-600 hover:bg-blue-50 w-1/2 text-sm mr-2"
+                >
                   &larr; 3.日時へ戻る
                 </Button>
                 <Button
                   type="submit"
                   disabled={!isFormValid}
-                  className={`flex items-center justify-center w-1/2 ${isFormValid
-                      ? 'bg-blue-600.hover:bg-blue-700.text-white'
-                      : 'bg-gray-300.text-gray-500.cursor-not-allowed'
-                    }`}>
+                  className={`flex items-center justify-center w-1/2 ${
+                    isFormValid
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                >
                   予約送信
                 </Button>
               </div>
