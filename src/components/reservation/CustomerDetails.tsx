@@ -1,14 +1,24 @@
 // src/components/reservation/CustomerDetails.tsx
+// -------------------------------------------------
+// 予約確定時にプッシュ通知を送るバージョン（Supabase v2 対応）
+// -------------------------------------------------
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Calendar, Clock, Tag } from 'lucide-react';
 import { useReservation } from '../../context/ReservationContext';
 import Button from '../ui/Button';
 import { supabase } from '../../lib/supabase';
+import { registerPush } from '../../hooks/usePush';  // 相対パスで調整
 
 const CustomerDetails: React.FC = () => {
+  /* ① 画面表示時に一度だけプッシュ通知の許可を取り、
+        FCM トークンを Supabase に保存 */
+  useEffect(() => {
+    registerPush().catch(console.error);
+  }, []);
+
   const {
     selectedServices,
     selectedDate,
@@ -18,35 +28,27 @@ const CustomerDetails: React.FC = () => {
   } = useReservation();
   const navigate = useNavigate();
 
-  // フォーム入力状態
-  const [lastName, setLastName] = useState<string>('');
-  const [firstName, setFirstName] = useState<string>('');
-  const [lastNameKana, setLastNameKana] = useState<string>('');
-  const [firstNameKana, setFirstNameKana] = useState<string>('');
-  const [phone, setPhone] = useState<string>('');
+  /* ---------------- フォーム状態 ---------------- */
+  const [lastName,      setLastName]      = useState('');
+  const [firstName,     setFirstName]     = useState('');
+  const [lastNameKana,  setLastNameKana]  = useState('');
+  const [firstNameKana, setFirstNameKana] = useState('');
+  const [phone,         setPhone]         = useState('');
 
-  // バリデーション
+  /* ---------------- バリデーション ---------------- */
   const isNameValid =
-    lastName.trim() !== '' &&
-    firstName.trim() !== '' &&
-    lastNameKana.trim() !== '' &&
-    firstNameKana.trim() !== '';
-  const isPhoneValid = phone.trim() !== '';
+    lastName && firstName && lastNameKana && firstNameKana;
+  const isPhoneValid = !!phone;
   const isFormValid =
     isNameValid && isPhoneValid && !!selectedDate && !!selectedTimeSlot;
 
-  // サービス未選択や日時未選択なら戻す
-  if (
-    !selectedServices ||
-    selectedServices.length === 0 ||
-    !selectedDate ||
-    !selectedTimeSlot
-  ) {
+  /* 必須データが欠けている場合は選択画面へ戻す */
+  if (!selectedServices?.length || !selectedDate || !selectedTimeSlot) {
     navigate('/reservation/services');
     return null;
   }
 
-  // 日時表示用フォーマット
+  /* ---------------- 表示用の加工 ---------------- */
   const formattedDateTime = useMemo(() => {
     const datePart = format(selectedDate, 'yyyy年MM月dd日 (E)');
     const timePart = format(
@@ -55,38 +57,33 @@ const CustomerDetails: React.FC = () => {
       ),
       'H:mm'
     );
-    return `${datePart}  ${timePart}～`;
+    return `${datePart} ${timePart}～`;
   }, [selectedDate, selectedTimeSlot]);
 
-  // サービス名の結合・合計金額・合計時間
   const serviceNames = useMemo(
-    () => selectedServices.map((svc) => svc.name).join('、'),
+    () => selectedServices.map((s) => s.name).join('、'),
     [selectedServices]
   );
   const totalPrice = useMemo(
-    () => selectedServices.reduce((sum, svc) => sum + svc.price, 0),
+    () => selectedServices.reduce((sum, s) => sum + s.price, 0),
     [selectedServices]
   );
   const totalRequiredMinutes = useMemo(
-    () => selectedServices.reduce((sum, svc) => sum + svc.duration, 0),
+    () => selectedServices.reduce((sum, s) => sum + s.duration, 0),
     [selectedServices]
   );
 
-  // 時間加算ユーティリティ
-  function incrementTimeByMinutes(baseTime: string, addMin: number): string {
-    const [h, m, s] = baseTime.split(':').map(Number);
-    const dateObj = new Date(0, 0, 0, h, m, s);
-    dateObj.setMinutes(dateObj.getMinutes() + addMin);
-    const pad = (n: number) => n.toString().padStart(2, '0');
-    return `${pad(dateObj.getHours())}:${pad(
-      dateObj.getMinutes()
-    )}:${pad(dateObj.getSeconds())}`;
-  }
-
-  const handleBack = () => {
-    navigate('/reservation/datetime');
+  /* HH:mm:ss 形式で分加算 */
+  const addMinutes = (time: string, mins: number) => {
+    const [h, m, s] = time.split(':').map(Number);
+    const d = new Date(0, 0, 0, h, m, s);
+    d.setMinutes(d.getMinutes() + mins);
+    return d.toTimeString().substring(0, 8);
   };
 
+  const handleBack = () => navigate('/reservation/datetime');
+
+  /* ---------------- 送信ハンドラ ---------------- */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) {
@@ -95,88 +92,84 @@ const CustomerDetails: React.FC = () => {
     }
 
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
-    const endTimeString = incrementTimeByMinutes(
-      selectedTimeSlot.start_time,
-      totalRequiredMinutes
-    );
+    const endTime = addMinutes(selectedTimeSlot.start_time, totalRequiredMinutes);
 
     try {
-      // 1) 顧客登録
-      const { data: customerData, error: customerError } = await supabase
+      /* 1) 顧客登録 */
+      const { data: customer, error: errCust } = await supabase
         .from('customers')
         .insert({
-          last_name: lastName.trim(),
-          first_name: firstName.trim(),
-          last_name_kana: lastNameKana.trim(),
-          first_name_kana: firstNameKana.trim(),
-          phone: phone.trim(),
+          last_name:         lastName.trim(),
+          first_name:        firstName.trim(),
+          last_name_kana:    lastNameKana.trim(),
+          first_name_kana:   firstNameKana.trim(),
+          phone:             phone.trim(),
         })
         .select('id')
         .single();
-      if (customerError) throw customerError;
-      const newCustomerId = customerData!.id;
+      if (errCust) throw errCust;
 
-      // 2) 予約登録
-      const { data: reservationData, error: reservationError } =
-        await supabase
-          .from('reservations')
-          .insert({
-            customer_id: newCustomerId,
-            date: dateStr,
-            start_time: selectedTimeSlot.start_time,
-            end_time: endTimeString,
-            status: 'pending',
-            service_names: serviceNames,
-            total_price: totalPrice,
-            notes: notes || '',
-          })
-          .select('id')
-          .single();
-      if (reservationError) throw reservationError;
-      const newReservationId = reservationData!.id;
+      /* 2) 予約登録 */
+      const { data: reservation, error: errRes } = await supabase
+        .from('reservations')
+        .insert({
+          customer_id:  customer!.id,
+          date:         dateStr,
+          start_time:   selectedTimeSlot.start_time,
+          end_time:     endTime,
+          status:       'pending',
+          service_names:serviceNames,
+          total_price:  totalPrice,
+          notes:        notes || '',
+        })
+        .select('id')
+        .single();
+      if (errRes) throw errRes;
 
-      // 3) Edge Function で管理者へ通知
-      const { error: fnError } = await supabase.functions.invoke('sendPush', {
-        body: {
-          customerName: `${lastName} ${firstName}`,
-          reservationTime: `${dateStr} ${selectedTimeSlot.start_time}`,
-        },
-      });
-      if (fnError) console.error('通知エラー:', fnError);
-      // invoke の結果をまとめて受け取る
-      const { data: fnData, error: fnError2 } = await supabase.functions.invoke('sendPush', {
-        body: {
-          customerName: `${lastName} ${firstName}`,
-          reservationTime: `${dateStr} ${selectedTimeSlot.start_time}`,
-        },
-      });
-      console.log('sendPush data=', fnData, 'error=', fnError2);
-
-      // 4) 空き時間更新
-      const { error: updateSlotsError } = await supabase
+      /* 3) 空き枠を埋める */
+      await supabase
         .from('time_slots')
         .update({ is_available: false })
         .eq('date', dateStr)
         .gte('start_time', selectedTimeSlot.start_time)
-        .lt('start_time', endTimeString);
-      if (updateSlotsError) {
-        console.error('time_slots 更新エラー:', updateSlotsError);
+        .lt('start_time',  endTime);
+
+      /* 4) 通知送信 */
+      const {
+        data: { user },
+        error: userErr,
+      } = await supabase.auth.getUser();     // v2 の取得方法
+      if (!user || userErr) {
+        console.error('ユーザー取得エラー', userErr);
+      } else {
+        await fetch('/functions/sendNotification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            user_id: user.id,
+            title:   '予約が確定しました',
+            body:    `${format(selectedDate,'MM月dd日')} ${format(new Date(`${dateStr}T${selectedTimeSlot.start_time}`),'H:mm')} の予約です`,
+            url:     '/admin'   // 通知タップ時に開かせたい URL（任意）
+          }),
+        });
       }
 
-      // 5) 完了ページへ遷移
+      /* 5) 完了画面へ */
       navigate('/reservation/confirm', {
-        state: { reservationId: newReservationId },
+        state: { reservationId: reservation!.id },
       });
-    } catch (err: any) {
-      console.error('顧客／予約作成エラー:', err);
+    } catch (err) {
+      console.error('登録エラー:', err);
       alert('登録に失敗しました。再度お試しください。');
     }
   };
 
+  /* ---------------- JSX ---------------- */
   return (
     <div className="min-h-screen bg-blue-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-8">
-        {/* 予約内容カード */}
+
+        {/* 予約内容 */}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 flex items-center">
             <Calendar className="w-5 h-5 text-white mr-2" />
@@ -196,7 +189,7 @@ const CustomerDetails: React.FC = () => {
           </div>
         </div>
 
-        {/* お客様情報入力欄 */}
+        {/* お客様情報入力 */}
         <div className="bg-white shadow-lg rounded-lg overflow-hidden">
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 px-6 py-4 flex items-center">
             <Tag className="w-5 h-5 text-white mr-2" />
@@ -214,10 +207,7 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setLastName(e.target.value)}
                     required
                     placeholder="山田"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${lastName.trim() === ''
-                      ? 'border-red-500'
-                      : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                      }`}
+                    className={`w-full p-3 border rounded-md focus:outline-none ${lastName ? 'border-gray-300 focus:ring-2 focus:ring-blue-600' : 'border-red-500'}`}
                   />
                 </div>
                 <div>
@@ -228,10 +218,7 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setFirstName(e.target.value)}
                     required
                     placeholder="太郎"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${firstName.trim() === ''
-                      ? 'border-red-500'
-                      : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                      }`}
+                    className={`w-full p-3 border rounded-md focus:outline-none ${firstName ? 'border-gray-300 focus:ring-2 focus:ring-blue-600' : 'border-red-500'}`}
                   />
                 </div>
               </div>
@@ -246,10 +233,7 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setLastNameKana(e.target.value)}
                     required
                     placeholder="ヤマダ"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${lastNameKana.trim() === ''
-                      ? 'border-red-500'
-                      : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                      }`}
+                    className={`w-full p-3 border rounded-md focus:outline-none ${lastNameKana ? 'border-gray-300 focus:ring-2 focus:ring-blue-600' : 'border-red-500'}`}
                   />
                 </div>
                 <div>
@@ -260,10 +244,7 @@ const CustomerDetails: React.FC = () => {
                     onChange={(e) => setFirstNameKana(e.target.value)}
                     required
                     placeholder="タロウ"
-                    className={`w-full p-3 border rounded-md focus:outline-none ${firstNameKana.trim() === ''
-                      ? 'border-red-500'
-                      : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                      }`}
+                    className={`w-full p-3 border rounded-md focus:outline-none ${firstNameKana ? 'border-gray-300 focus:ring-2 focus:ring-blue-600' : 'border-red-500'}`}
                   />
                 </div>
               </div>
@@ -277,16 +258,15 @@ const CustomerDetails: React.FC = () => {
                   onChange={(e) => setPhone(e.target.value)}
                   required
                   placeholder="09012345678"
-                  className={`w-full p-3 border rounded-md focus:outline-none ${phone.trim() === ''
-                    ? 'border-red-500'
-                    : 'border-gray-300 focus:ring-2 focus:ring-blue-600'
-                    }`}
+                  className={`w-full p-3 border rounded-md focus:outline-none ${phone ? 'border-gray-300 focus:ring-2 focus:ring-blue-600' : 'border-red-500'}`}
                 />
               </div>
 
               {/* 質問・確認事項 */}
               <div>
-                <label className="block text-gray-700 mb-1">質問・確認事項（任意）</label>
+                <label className="block text-gray-700 mb-1">
+                  質問・確認事項（任意）
+                </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -308,10 +288,11 @@ const CustomerDetails: React.FC = () => {
                 <Button
                   type="submit"
                   disabled={!isFormValid}
-                  className={`flex items-center justify-center w-1/2 ${isFormValid
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                  className={`flex items-center justify-center w-1/2 ${
+                    isFormValid
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
                   予約送信
                 </Button>
