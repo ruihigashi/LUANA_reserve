@@ -10,6 +10,9 @@ console.log('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL ? '設�
 console.log('FIREBASE_PRIVATE_KEY:', process.env.FIREBASE_PRIVATE_KEY ? '設定済み' : '未設定');
 console.log('FIREBASE_VAPID_PRIVATE_KEY:', process.env.FIREBASE_VAPID_PRIVATE_KEY ? '設定済み' : '未設定');
 
+// サービスアカウント情報を環境変数から取得
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+
 // Supabaseクライアントの初期化
 const supabase = createClient(
   process.env.VITE_SUPABASE_URL || 'https://opnrnjipuwjcxtvdnkdp.supabase.co',
@@ -19,16 +22,9 @@ const supabase = createClient(
 // Firebase Admin SDKの初期化
 if (!admin.apps.length) {
   try {
-    // サービスアカウントキーファイルのパスを修正（同じフォルダ）
-    const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
-    console.log('サービスアカウントキーパス:', serviceAccountPath);
-    
-    const serviceAccount = require(serviceAccountPath);
-    
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
     });
-    
     console.log('Firebase Admin SDK初期化成功');
   } catch (error) {
     console.error('Firebase Admin SDK初期化エラー:', error);
