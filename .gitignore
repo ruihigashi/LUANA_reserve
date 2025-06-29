@@ -24,7 +24,5 @@ dist-ssr
 *.sw?
 .env
 
-# Firebase Admin Key
-/supabase/functions/serviceAccountKey.json
 # Local Netlify folder
 .netlify

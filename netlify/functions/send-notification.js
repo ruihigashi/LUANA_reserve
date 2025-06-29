@@ -10,8 +10,9 @@ console.log('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL ? '設�
 console.log('FIREBASE_PRIVATE_KEY:', process.env.FIREBASE_PRIVATE_KEY ? '設定済み' : '未設定');
 console.log('FIREBASE_VAPID_PRIVATE_KEY:', process.env.FIREBASE_VAPID_PRIVATE_KEY ? '設定済み' : '未設定');
 
-// サービスアカウント情報を環境変数から取得
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+// サービスアカウントキーファイルのパスを指定
+const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
+const serviceAccount = require(serviceAccountPath);
 
 // Supabaseクライアントの初期化
 const supabase = createClient(
