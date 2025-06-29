@@ -1,6 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://opnrnjipuwjcxtvdnkdp.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wbnJuamlwdXdqY3h0dmRua2RwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NzkzMDk4NywiZXhwIjoyMDYzNTA2OTg3fQ.2k2Asip007ZBWcN13r2lJnbEIbhWmTr9D3IaPpvl-xY';
+// 環境変数から取得
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+// URLとキーの検証
+if (!supabaseUrl) {
+  console.error('VITE_SUPABASE_URL is required');
+  throw new Error('VITE_SUPABASE_URL is required. Please check your environment variables.');
+}
+
+if (!supabaseKey) {
+  console.error('VITE_SUPABASE_ANON_KEY is required');
+  throw new Error('VITE_SUPABASE_ANON_KEY is required. Please check your environment variables.');
+}
+
+console.log('Supabase URL:', supabaseUrl);
+console.log('Supabase Key (first 20 chars):', supabaseKey.substring(0, 20) + '...');
 
 export const supabase = createClient(supabaseUrl, supabaseKey);
