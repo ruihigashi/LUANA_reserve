@@ -1,7 +1,7 @@
 
 // @ts-nocheck
 import { serve } from 'https://deno.land/x/sift@0.4.1/mod.ts';
-import admin      from 'npm:firebase-admin@^11';              // ★npm: 形式
+import admin from 'npm:firebase-admin@^11';              // ★npm: 形式
 import { createClient } from 'npm:@supabase/supabase-js@^2';   // ★npm: 形式
 
 // ---------- Firebase Admin 初期化 ----------
@@ -14,8 +14,8 @@ if (!admin.apps.length) {
 
 // ---------- Supabase サーバーキーで接続 ----------
 const supabase = createClient(
-  Deno.env.get('//opnrnjipuwjcxtvdnkdp.supabase.co')!,
-  Deno.env.get('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wbnJuamlwdXdqY3h0dmRua2RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzA5ODcsImV4cCI6MjA2MzUwNjk4N30.tOn6MgfxpfA3S14vdCaADmbBnoJ1rjUwNo-Z4ZYOX48')!
+  Deno.env.get('SUPABASE_URL')!,
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 );
 
 // ---------- HTTP エンドポイント ----------
@@ -32,7 +32,7 @@ serve(async (req) => {
     .select('token')
     .eq('user_id', user_id);
 
-  if (dbErr)    return new Response('DB error', { status: 500 });
+  if (dbErr) return new Response('DB error', { status: 500 });
   if (!rows?.length) return new Response('Token not found', { status: 404 });
 
   // 2) Firebase へ送信

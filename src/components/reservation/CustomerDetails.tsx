@@ -10,7 +10,7 @@ import { Calendar, Clock, Tag } from 'lucide-react';
 import { useReservation } from '../../context/ReservationContext';
 import Button from '../ui/Button';
 import { supabase } from '../../lib/supabase';
-import { registerPush } from '../../hooks/usePush';  // 相対パスで調整
+import { registerPush, notifyAdmin } from '../../hooks/usePush';  // 相対パスで調整
 
 const CustomerDetails: React.FC = () => {
   /* ① 画面表示時に一度だけプッシュ通知の許可を取り、
@@ -134,24 +134,29 @@ const CustomerDetails: React.FC = () => {
         .gte('start_time', selectedTimeSlot.start_time)
         .lt('start_time',  endTime);
 
-      /* 4) 通知送信 */
-      const {
-        data: { user },
-        error: userErr,
-      } = await supabase.auth.getUser();     // v2 の取得方法
-      if (!user || userErr) {
-        console.error('ユーザー取得エラー', userErr);
-      } else {
-        await fetch('/functions/sendNotification/index', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            user_id: user.id,
-            title:   '予約が確定しました',
-            body:    `${format(selectedDate,'MM月dd日')} ${format(new Date(`${dateStr}T${selectedTimeSlot.start_time}`),'H:mm')} の予約です`,
-            url:     '/admin'   // 通知タップ時に開かせたい URL（任意）
-          }),
-        });
+      /* 4) 管理者に通知送信 */
+      try {
+        console.log('管理者通知送信開始');
+        const notificationTitle = '新しい予約が確定しました';
+        const notificationBody = `${format(selectedDate, 'MM月dd日')} ${format(new Date(`${dateStr}T${selectedTimeSlot.start_time}`), 'H:mm')} - ${lastName}${firstName}様 (${serviceNames})`;
+        
+        const notificationData = {
+          reservationId: reservation!.id,
+          customerName: `${lastName}${firstName}`,
+          date: dateStr,
+          time: selectedTimeSlot.start_time,
+          services: serviceNames,
+          price: totalPrice
+        };
+        
+        console.log('通知データ:', { notificationTitle, notificationBody, notificationData });
+        
+        await notifyAdmin(notificationTitle, notificationBody, notificationData);
+        console.log('管理者通知送信完了');
+      } catch (notificationError) {
+        console.error('通知送信エラー:', notificationError);
+        // 通知エラーは予約処理を止めない
+        // ユーザーには通知エラーを表示しない（予約は成功しているため）
       }
 
       /* 5) 完了画面へ */
