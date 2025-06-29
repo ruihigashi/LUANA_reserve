@@ -1,13 +1,7 @@
 // src/hooks/usePush.ts
 import { messaging, getFCMToken, sendNotificationToAdmin } from '../lib/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
-import { createClient } from '@supabase/supabase-js';
-
-// 環境変数（Vite は import.meta.env.*）
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { supabase } from '../lib/supabase';
 
 /**
  * 通知許可 → FCM トークン取得 → Supabase 保存
