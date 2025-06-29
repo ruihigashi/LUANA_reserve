@@ -13,7 +13,7 @@ const app = initializeApp(firebaseConfig);
 export const messaging = getMessaging(app);
 
 // VAPIDキー（Firebase Consoleから取得した実際の値）
-const VAPID_KEY = '76QY0aMZIAl7I29t7sr008115Z2aAuxf6wUzZLEb0AI';
+const VAPID_KEY = 'BLl31oUG76kR0zJvcNHOOwlxFshCOz97zHqm8XozfQTWJ38CVWIrauKuEjFD-vqjKRAXdMkuKDLC-kj5rRyJeyY';
 
 /**
  * 管理者に通知を送信する関数（改善版）
