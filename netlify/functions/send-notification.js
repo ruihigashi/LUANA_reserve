@@ -19,8 +19,8 @@ const supabase = createClient(
 // Firebase Admin SDKの初期化
 if (!admin.apps.length) {
   try {
-    // サービスアカウントキーファイルのパス
-    const serviceAccountPath = path.join(__dirname, '../../supabase/functions/sendNotification/serviceAccountKey.json');
+    // サービスアカウントキーファイルのパスを修正（同じフォルダ）
+    const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
     console.log('サービスアカウントキーパス:', serviceAccountPath);
     
     const serviceAccount = require(serviceAccountPath);

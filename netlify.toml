@@ -19,7 +19,7 @@
   node_bundler = "esbuild"
 
 [functions."send-notification"]
-  environment = { 
-    VITE_SUPABASE_URL = "https://opnrnjipuwjcxtvdnkdp.supabase.co",
+  [functions."send-notification".environment]
+    VITE_SUPABASE_URL = "https://opnrnjipuwjcxtvdnkdp.supabase.co"
+    VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9wbnJuamlwdXdqY3h0dmRua2RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDc5MzA5ODcsImV4cCI6MjA2MzUwNjk4N30.tOn6MgfxpfA3S14vdCaADmbBnoJ1rjUwNo-Z4ZYOX48"
     FIREBASE_VAPID_PRIVATE_KEY = "eduGMOgY3Qrxs57qhV3luyowWjxfN0smGHuge8KqxRQ"
-  } 
