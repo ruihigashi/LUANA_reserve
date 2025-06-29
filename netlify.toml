@@ -13,4 +13,10 @@
 [[redirects]]
   from = "/*"
   to = "/index.html"
-  status = 200 
+  status = 200
+
+[functions]
+  node_bundler = "esbuild"
+
+[functions."send-notification"]
+  environment = { VITE_SUPABASE_URL = "https://opnrnjipuwjcxtvdnkdp.supabase.co" } 
