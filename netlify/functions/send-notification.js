@@ -1,6 +1,7 @@
 const { createClient } = require('@supabase/supabase-js');
 const admin = require('firebase-admin');
 const path = require('path');
+const fs = require('fs');
 
 // デバッグログ
 console.log('環境変数チェック:');
@@ -12,6 +13,10 @@ console.log('FIREBASE_VAPID_PRIVATE_KEY:', process.env.FIREBASE_VAPID_PRIVATE_KE
 
 // サービスアカウントキーファイルのパスを指定
 const serviceAccountPath = path.join(__dirname, 'serviceAccountKey.json');
+if (!fs.existsSync(serviceAccountPath)) {
+  console.error('serviceAccountKey.json が見つかりません:', serviceAccountPath);
+  throw new Error('serviceAccountKey.json が見つかりません');
+}
 const serviceAccount = require(serviceAccountPath);
 
 // Supabaseクライアントの初期化
