@@ -4,6 +4,14 @@
 
 Luana予約システム
 
+
+## 目次
+
+1. [プロジェクトについて](#プロジェクトについて)
+2. [開発環境](#開発環境)
+3. [ディレクトリ構成](#ディレクトリ構成)
+4. [開発環境構築](#開発環境構築)
+
 ## プロジェクトについて
 
 母が個人で営む美容室の予約を行えるウェブサイト
@@ -25,13 +33,6 @@ https://luana-reserve.netlify.app/reservation
   <img src="https://img.shields.io/badge/-Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white">
   <img src="https://img.shields.io/badge/-Netlify-00C7B7?style=for-the-badge&logo=netlify&logoColor=white">
 </p>
-
-## 目次
-
-1. [プロジェクトについて](#プロジェクトについて)
-2. [開発環境](#開発環境)
-3. [ディレクトリ構成](#ディレクトリ構成)
-4. [開発環境構築](#開発環境構築)
 
 <br />
 
