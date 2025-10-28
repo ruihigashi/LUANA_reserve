@@ -1,5 +1,19 @@
 <div id="top"></div>
 
+## プロジェクト名
+
+Luana予約システム
+
+## プロジェクトについて
+
+母が個人で営む美容室の予約を行えるウェブサイト
+<img width="1920" height="7303" alt="screencapture-luana-reserve-netlify-app-reservation-2025-10-28-13_52_31" src="https://github.com/user-attachments/assets/9bf4d634-b8c5-41fa-8476-3f6e50639993" />
+
+
+## サイトリンク
+https://luana-reserve.netlify.app/reservation
+
+
 ## 使用技術一覧
 
 <p style="display: inline">
@@ -20,14 +34,6 @@
 4. [開発環境構築](#開発環境構築)
 
 <br />
-
-## プロジェクト名
-
-Luana Reserve
-
-## プロジェクトについて
-
-美容室の予約管理アプリ
 
 <p align="right">(<a href="#top">トップへ</a>)</p>
 
@@ -92,12 +98,7 @@ npm install
 npm run dev
 ```
 
-### 3. Firebase / Supabase の設定
+### 3. デプロイ
 
-本プロジェクトはバックエンドに Firebase と Supabase を使用しています。
-詳細な設定方法は、以下のドキュメントを参照してください。
-
-- [FIREBASE_SETUP.md](./FIREBASE_SETUP.md)
-
-<p align="right">(<a href="#top">トップへ</a>)</p>
+https://luana-reserve.netlify.app/reservation
 
